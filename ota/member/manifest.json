@@ -1,7 +1,7 @@
 {
- "pageVersion": 2610131321,
- "sha256": "c1af5450afbeb3e81ce0130fd4a29f000093af357c0e094630aff18cdc6969d8",
+ "pageVersion": 2610131538,
+ "sha256": "b5e6f244a34b0262fc7f905c8938fe85f1782a4f3978b7e6ba0607cdb26d2084",
  "minVersionCode": 15,
- "notes": "새 로그인 화면 · 인명부로 본인 확인",
- "publishedAt": "2026-10-13T04:22:31.555642+00:00"
+ "notes": "경제스터디 자료 마감 표시 개선",
+ "publishedAt": "2026-10-13T06:39:29.292958+00:00"
 }

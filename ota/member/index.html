@@ -514,6 +514,7 @@ nav.tabs{border-top-color:transparent;box-shadow:0 -1px 0 var(--line),0 -6px 16p
         <label class="f">시행일<input type="text" id="lgDate" data-cal="iso" readonly></label>
         <label class="f">상태<select id="lgState"><option value="plan">예정</option><option value="done">시행함</option></select></label>
       </div>
+      <label class="f" id="lgModeWrap" hidden>경제스터디 방식<select id="lgMode"><option value="article">기사분석 · 자료를 미리 올림 (회칙 13.3: 이틀 전까지)</option><option value="none">교재 풀이·토론·세일즈 등 · 미리 올릴 자료 없음</option></select></label>
       <button class="btn primary" id="lgAdd" style="align-self:flex-start">기록 추가</button>
       <p class="note">'예정'으로 넣으면 경제 자료 업로드(D-2) 같은 사전 마감이, '시행함'이면 업로드 마감이 '이번 주'에 자동으로 뜹니다.</p>
       <div class="tl" id="logList"></div>
@@ -796,7 +797,13 @@ function buildTasks(now){
   S.logs.forEach(l=>{
     const d=parseYmd(l.date);if(!d)return;const now=new Date();
     if(l.kind==='speech'&&l.state==='done'&&!l.up){const sp=speechPostFor(l.date);if(!(sp&&now-d>7*864e5))T.push({id:'log-'+l.id,log:l,title:'스피치 평가양식 업로드',desc:`${l.date} 시행분 · ${speechTeam()} 게시판 · 제목 "${me().name} 평가표"`,due:at(d,1,23,59),fine:1000,act:['sp'],link:teamUrl('speech',speechTeam())||boardUrl('S5'),linkLabel:`${speechTeam()} 게시판 열기 ↗`,auto:sp?{at:sp.writtenAt,what:sp.title}:null})}
-    if(l.kind==='econ'&&l.state==='plan'&&!l.up)T.push({id:'log-'+l.id,log:l,title:'경제스터디 사전 자료 업로드 (D-2)',desc:`${l.date} 스터디 · 기사분석 방식이면 이틀 전까지 ${econTeam().short} 게시판에 업로드 (교재 문제풀이면 체크하고 넘기세요)`,due:at(d,-2,23,59),fine:3000,link:econTeam().url});
+    if(l.kind==='econ'&&l.state==='plan'&&!l.up&&l.mode!=='none'){
+      // 회칙 13.3: 경제 스터디 자료는 스터디 이틀 전까지 업로드 → 시행일 2일 전 23:59
+      const due=at(d,-2,23,59),late=Number(l.id)>+due,dd=`${due.getMonth()+1}/${due.getDate()}`;
+      T.push({id:'log-'+l.id,log:l,title:'경제스터디 사전 자료 업로드 (기사분석)',lateAdd:late,
+        desc:`${dot(d)} 스터디 · 회칙 13.3: 이틀 전(${dd} 23:59)까지 ${econTeam().short} 게시판에 업로드`+(late?` · 기록을 넣을 때 이미 마감이 지났어요. 지금이라도 올리세요`:'')+(l.mode?'':' · 교재 풀이·토론처럼 미리 올릴 자료가 없으면 \'이번 달\' 기록에서 방식을 바꾸세요'),
+        due,fine:3000,link:econTeam().url});
+    }
     if(l.kind==='econ'&&l.state==='done'&&!l.up){
       const post=econPostFor(l.date),exec=post&&post.my&&post.my.at?post.my:null,ET=econTeam();
       if(post&&exec&&now-d>7*864e5)return;
@@ -821,7 +828,7 @@ function statusOf(t,done,now){
   if(t.info&&done)return{cls:'p-ok',txt:t.id==='meet'?'참석 완료':'완료',rank:4};
   if(t.info){if(now>t.due)return{cls:'p-ok',txt:'지남',rank:3};const h=(t.due-now)/36e5;return{cls:'p-acc',txt:h<24?`${Math.floor(h)}시간 뒤`:`D-${Math.ceil(h/24)}`,rank:2}}
   if(done)return{cls:'p-ok',txt:'완료',rank:4};
-  const ms=t.due-now;if(ms<0)return{cls:'p-danger',txt:'마감 지남',rank:0};
+  const ms=t.due-now;if(ms<0)return t.lateAdd?{cls:'p-warn',txt:'늦게 등록 · 지금 올리기',rank:1}:{cls:'p-danger',txt:'마감 지남',rank:0};
   const h=ms/36e5;if(h<24)return{cls:'p-warn',txt:h<1?`${Math.max(1,Math.round(ms/6e4))}분 남음`:`${Math.floor(h)}시간 남음`,rank:1};
   return{cls:'p-idle',txt:`D-${Math.ceil(h/24)}`,rank:2};
 }
@@ -1158,7 +1165,10 @@ function renderMonth(){
   // 기록 목록
   const ll=$('logList');ll.innerHTML='';
   const KN={speech:'스피치',econ:'경제',newecon:'신입경스'};
-  S.logs.slice().sort((a,b)=>a.date<b.date?1:-1).forEach(l=>{const d=document.createElement('div');d.innerHTML=`<time>${l.date.slice(5)}</time><span>${KN[l.kind]} · ${l.state==='plan'?'예정':'시행'}${l.up?' · 업로드 완료':''}</span><button class="btn sm">삭제</button>`;d.querySelector('button').onclick=()=>{S.logs=S.logs.filter(x=>x!==l);save();renderAll()};ll.appendChild(d)});
+  S.logs.slice().sort((a,b)=>a.date<b.date?1:-1).forEach(l=>{const d=document.createElement('div');const em=l.kind==='econ'&&l.state==='plan';d.innerHTML=`<time>${l.date.slice(5)}</time><span>${KN[l.kind]} · ${l.state==='plan'?'예정':'시행'}${em?` · ${l.mode==='none'?'미리 올릴 자료 없음':'기사분석'}`:''}${l.up?' · 업로드 완료':''}</span>${em?'<button class="btn sm" data-mode>방식 바꾸기</button>':''}<button class="btn sm" data-del>삭제</button>`;
+    d.querySelector('[data-del]').onclick=()=>{S.logs=S.logs.filter(x=>x!==l);save();renderAll()};
+    if(em)d.querySelector('[data-mode]').onclick=()=>{l.mode=l.mode==='none'?'article':'none';save();renderAll();toast(l.mode==='none'?'사전 자료 업로드 할 일을 뺐어요':'사전 자료 업로드 할 일을 다시 넣었어요')};
+    ll.appendChild(d)});
   if(!S.logs.length)ll.innerHTML='<p class="note" style="margin-top:6px">10월 기록이 아직 없어요. 스터디 날짜가 잡히면 \'예정\'으로 넣어 두세요.</p>';
   // 돈
   const mt=$('moneyTl');mt.innerHTML='';
@@ -1166,7 +1176,12 @@ function renderMonth(){
   moneyEvents(now).forEach(m=>{const d=document.createElement('div');const past=now>m.due;const fl=m.day===10&&fine?`<br><a class="src" href="${artUrl(fine.cafe||'main',fine.articleId)}" target="_blank" rel="noopener">카페 글: ${esc(fine.title)} (${shortAt(fine.writtenAt)}) ↗</a>`:'';d.innerHTML=`<time>${now.getMonth()+1}/${m.day}</time><span>${m.title}<br><span class="src">${m.desc}</span>${fl}</span><span class="pill ${past?'p-ok':m.due-now<3*864e5?'p-warn':'p-idle'}">${past?'지남':'D-'+Math.ceil((m.due-now)/864e5)}</span>`;mt.appendChild(d)});
 }
 $('lgDate').value=ymd(new Date());
-$('lgAdd').onclick=()=>{const d=parseYmd($('lgDate').value);if(!d){toast('시행일은 2026-10-14 형식으로 적어 주세요');return}S.logs.push({id:Date.now(),kind:$('lgKind').value,date:ymd(d),state:$('lgState').value,up:false});save();renderAll();toast('기록했어요. 관련 마감이 \'이번 주\'에 뜹니다')};
+const lgModeSync=()=>{$('lgModeWrap').hidden=!($('lgKind').value==='econ'&&$('lgState').value==='plan')};$('lgKind').onchange=lgModeSync;$('lgState').onchange=lgModeSync;lgModeSync();
+$('lgAdd').onclick=()=>{const d=parseYmd($('lgDate').value);if(!d){toast('시행일은 2026-10-14 형식으로 적어 주세요');return}
+  const L={id:Date.now(),kind:$('lgKind').value,date:ymd(d),state:$('lgState').value,up:false};if(L.kind==='econ'&&L.state==='plan')L.mode=$('lgMode').value;
+  S.logs.push(L);save();renderAll();
+  const pre=L.kind==='econ'&&L.state==='plan'&&L.mode==='article'?at(d,-2,23,59):null;
+  toast(pre&&pre<new Date()?`자료 업로드 마감(${pre.getMonth()+1}/${pre.getDate()})이 이미 지났어요. 지금이라도 올려 주세요`:'기록했어요. 관련 마감이 \'이번 주\'에 뜹니다')};
 function whoText(){const m=me();return m.name?`${m.gen} ${m.name} · 황금나침반 활동 비서`:'황금나침반 활동 비서'}
 $('whoLabel').textContent=whoText();
 ['meGen','meName'].forEach(id=>{const f=id==='meGen'?'gen':'name';$(id).value=me()[f];$(id).oninput=()=>{S.me[f]=$(id).value.trim();save();$('whoLabel').textContent=whoText();renderEc()};$(id).onchange=()=>{announce();renderAll();acctRefresh()}});
@@ -1784,7 +1799,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('button,a,[role=
 try{new PerformanceObserver(l=>l.getEntries().forEach(x=>{if(x.duration>800)uLog('timing','화면 멈춤',curTab,x.duration)})).observe({type:'longtask',buffered:true})}catch(_){}
 function uDevice(){const m=navigator.userAgent.match(/Android ([\d.]+);\s*([^;)]+)/);return m?`${m[2].split(' Build')[0].trim()} / Android ${m[1]}`:navigator.userAgent.slice(0,60)}
 function uInfo(){let i={};try{i=JSON.parse(HnmNative.info()||'{}')}catch(_){}return i}
-function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610131321',device:uDevice(),events,summaries}}
+function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610131538',device:uDevice(),events,summaries}}
 async function uPost(body,beacon){const j=JSON.stringify(body);
   if(beacon&&j.length<60000&&navigator.sendBeacon)return navigator.sendBeacon(TEL_URL,new Blob([j],{type:'text/plain;charset=utf-8'}));
   await fetch(TEL_URL,{method:'POST',mode:'no-cors',keepalive:j.length<60000,headers:{'Content-Type':'text/plain;charset=utf-8'},body:j});return true}
@@ -1880,7 +1895,7 @@ function initMemberAndTelemetry(){
   if(MEMBER){$('recSub').textContent='· 카페 자동 확인'}
   if(NATIVE_TRACK()){
     document.querySelectorAll('.app-only').forEach(e=>e.hidden=false);
-    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610131321'}`}catch(_){}
+    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610131538'}`}catch(_){}
     syncConsentUi();
     $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요');uTelInfo()};
     try{HnmNative.setConsent(consentOn())}catch(_){}
