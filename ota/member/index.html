@@ -106,6 +106,32 @@ h2 .sub{font-weight:500;letter-spacing:0}
 .btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .acct{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .acct-info{display:flex;flex-direction:column;gap:2px;min-width:0}.acct-btns{display:flex;gap:6px;flex-wrap:wrap}
+.login{position:fixed;inset:0;z-index:40;overflow:auto;background:var(--bg);display:flex;flex-direction:column}
+.login-top{background:radial-gradient(120% 90% at 50% 0%,#4C7363 0%,var(--board) 55%,#2F4A40 100%);color:var(--chalk);padding:calc(env(safe-area-inset-top,0px) + 44px) 24px 76px;text-align:center;position:relative;overflow:hidden}
+.login-top:after{content:"";position:absolute;inset:auto -10% -40px -10%;height:80px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
+.login-ring{width:92px;height:92px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:rgba(242,240,230,.1);box-shadow:0 0 0 1px rgba(242,240,230,.25),0 0 0 9px rgba(242,240,230,.06)}
+.login-ring img{width:64px;height:64px;border-radius:50%}
+.login-top h1{font:400 32px/1.15 var(--f-display);margin:0;letter-spacing:.5px}
+.login-top p{margin:6px 0 0;opacity:.82;font-size:14px}
+.login-card{position:relative;z-index:1;margin:-44px 18px 0;background:var(--surface);border-radius:20px;padding:22px 20px 18px;box-shadow:var(--lift-hi);display:flex;flex-direction:column;gap:12px;max-width:440px;align-self:center;width:calc(100% - 36px)}
+.login-card h2{margin:0;font-size:17px}
+.login-card .sub{margin:-6px 0 2px;color:var(--muted);font-size:13px}
+.lg-row{display:grid;grid-template-columns:96px 1fr;gap:10px}
+.lg-f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.lg-f input,.lg-f select{font:500 16px var(--f-body);color:var(--ink);background:var(--bg);border:1.5px solid transparent;border-radius:12px;padding:11px 12px;outline:none;width:100%;box-sizing:border-box}
+.lg-f input:focus,.lg-f select:focus{border-color:var(--board);background:var(--surface)}
+.lg-go{font:700 16px var(--f-body);background:var(--board);color:var(--chalk);border:0;border-radius:14px;padding:14px;margin-top:4px;cursor:pointer;box-shadow:0 6px 16px -8px rgba(61,94,81,.7)}
+.lg-go:disabled{opacity:.6}
+.lg-steps{display:flex;gap:6px;flex-wrap:wrap}
+.lg-steps span{font-size:12px;padding:4px 9px;border-radius:999px;background:var(--bg);color:var(--muted)}
+.lg-steps span.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.lg-steps span.done{background:var(--ok-soft);color:var(--ok)}
+.lg-err{background:var(--danger-soft);color:var(--danger);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.5}
+.lg-alt{display:flex;gap:8px;flex-wrap:wrap}
+.lg-alt button{font:600 12.5px var(--f-body);background:none;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:7px 10px;cursor:pointer}
+.lg-foot{color:var(--muted);font-size:12px;text-align:center;padding:16px 26px 28px;line-height:1.6}
+.lg-consent{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--muted)}
+.lg-consent input{margin-top:3px;accent-color:var(--board)}
 .btn.acc{background:var(--board);color:var(--chalk);border-color:var(--board)}
 .btn.sm{padding:4px 9px;font-size:12px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -576,6 +602,7 @@ nav.tabs{border-top-color:transparent;box-shadow:0 -1px 0 var(--line),0 -6px 16p
       <label class="f">카페 링크 여는 방식<select id="linkMode"><option value="auto">자동 (기기에 맞춤)</option><option value="mobile">휴대폰용 (m.cafe)</option><option value="pc">PC용 (cafe)</option></select></label>
       <p class="note">'카페에서 열기'가 빈 화면이면 여기서 방식을 바꿔 보세요.</p>
       <label class="toggle app-only" hidden><span>사용 기록·오류 보내기<br><small class="note">앱 개선용. 카페 글 내용·연락처는 보내지 않아요</small></span><input type="checkbox" id="consentChk"></label>
+      <p class="note app-only" id="telInfo" hidden></p>
       <p class="note app-only" id="appVer" hidden></p>
     </div>
 
@@ -643,7 +670,8 @@ function wonK(n){n=Math.round(n||0);if(n<1000)return won(n);const man=Math.floor
 function at(base,dayOff,h,m){const d=new Date(base);d.setDate(d.getDate()+dayOff);d.setHours(h,m,0,0);return d}
 function cycleStart(now){const d=new Date(now);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()-2+7)%7));return d}
 function parseYmd(s){const m=String(s).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);return m?new Date(+m[1],+m[2]-1,+m[3]):null}
-function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,1900)}
+const STUCK_RE=/못|실패|없어요|오류|확인해 주세요|막혔|안 돼|필요해요|응답이 없|다시 (눌러|시도)/;
+function toast(t){try{if(STUCK_RE.test(t))uLog('stuck','안내',t)}catch(_){}const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,1900)}
 function copy(text,msg){
   const ok=()=>toast(msg||'복사했어요. 카페에 붙여넣으세요');
   const fb=()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok()}catch(e){toast('복사가 막혔어요. 길게 눌러 직접 복사하세요')}ta.remove()};
@@ -693,6 +721,7 @@ window.addEventListener('message',e=>{
   if(d.type==='hnm-bridge-ping'){announce();return}
   if(d.type==='hnm-ext-hello'){const was=BRIDGE;BRIDGE=true;BRIDGE_VER=d.version||'';if(d.label)BRIDGE_LABEL=d.label;renderSyncLine();if(!was&&$('qpList')&&!isTyping())renderQPrep()}
   else if(d.type==='hnm-sync'){
+    try{const st=d.status||(d.sync&&d.sync.status);if(st&&st.ok===false)uLog('error','sync_fail',st.msg||'');}catch(_){}
     const changed=applySync(d.sync);
     // 이미 같은 데이터면 저장 확인만 돌려줌
     if(!changed&&DB&&d.sync&&SYNC&&d.sync.syncedAt===SYNC.syncedAt)window.postMessage({type:'hnm-saved',syncedAt:d.sync.syncedAt},'*');
@@ -1326,8 +1355,9 @@ JSON만 답하라: {"questions":[{"q":"질문","code":"유형 코드 한 글자"
 const QERR={not_granted:'Claude 사용을 허용하지 않아 패턴 템플릿으로 만들었어요',rate_limited:'요청이 몰렸어요. 잠시 뒤 다시 눌러 주세요',invalid_json:'답을 읽지 못했어요. 한 번 더 눌러 주세요',images_unavailable:'이 화면에서는 사진을 보낼 수 없어요. 사진 없이 다시 눌러 주세요',image_rejected:'사진 형식이 맞지 않아요 (JPG·PNG). 사진을 빼고 다시 눌러 주세요'};
 // PC 크롬 확장이 연결돼 있으면 발표 슬라이드를 자동으로 받아 Claude에게 함께 보여 줌
 // 확장에 요청 → 3초 안에 '받았음(ack)'이 없으면 연결이 끊긴 것(확장을 새로고침한 뒤 페이지를 안 바꾼 경우 등)
-function bridgeCall(reqType,resType,payload,{ms=150000,onProgress}={}){return new Promise(res=>{const id=+payload.articleId;let done=false,acked=false;
-  const end=v=>{if(done)return;done=true;window.removeEventListener('message',fn);clearTimeout(ta);clearTimeout(tt);clearTimeout(th);res(v)};
+function bridgeCall(reqType,resType,payload,{ms=150000,onProgress}={}){return new Promise(res=>{const id=+payload.articleId;let done=false,acked=false;const bt0=performance.now();
+  const end=v=>{if(done)return;done=true;window.removeEventListener('message',fn);clearTimeout(ta);clearTimeout(tt);clearTimeout(th);
+    try{uLog('timing',reqType.replace(/^hnm-|-request$/g,''),v==null?'응답 없음':v.ok===false?'실패: '+(v.msg||''):'ok',performance.now()-bt0)}catch(_){}res(v)};
   const fn=e=>{const d=e.data;if(e.source!==window||!d||+d.articleId!==id)return;
     if(d.type==='hnm-ack'){acked=true;if(d.ok===false)end({ok:false,msg:'ext-reloaded'});return}
     if(d.type==='hnm-progress'){acked=true;onProgress&&onProgress(d.text);return}
@@ -1596,39 +1626,39 @@ function loadXlsxLib(){return new Promise((res,rej)=>{if(window.XLSX)return res(
 function parseRosterSheet(rows,fileName){
   const hi=rows.findIndex(r=>r&&r.some(c=>String(c||'').trim()==='이름'));if(hi<0)return null;
   const H=rows[hi].map(c=>String(c||'').replace(/\s/g,''));const col=k=>H.findIndex(h=>h===k||h.includes(k));
-  const ix={name:col('이름'),dept:col('학과'),year:col('학년'),phone:col('전화'),email:col('mail'),city:col('거주'),sector:col('구분'),org:col('직장'),branch:col('지점'),title:col('직위'),bday:col('생일'),note:col('비고')};
+  const ix={sid:col('학번'),name:col('이름'),dept:col('학과'),year:col('학년'),phone:col('전화'),email:col('mail'),city:col('거주'),sector:col('구분'),org:col('직장'),branch:col('지점'),title:col('직위'),bday:col('생일'),note:col('비고')};
   if(ix.email<0)ix.email=col('메일');
   const out=[];let gen='';
   rows.slice(hi+1).forEach(r=>{if(!r)return;const g=String(r[0]||'').trim();if(/^\d+기$/.test(g))gen=g;const name=String(r[ix.name]||'').trim();if(!name||name==='이름')return;
     const v=k=>ix[k]>=0&&r[ix[k]]!=null&&String(r[ix[k]]).trim()!==''?String(r[ix[k]]).trim():null;
-    const bd=v('bday');out.push({gen,name,dept:v('dept'),year:v('year'),phone:v('phone'),email:v('email'),city:v('city'),sector:v('sector'),org:v('org'),branch:v('branch'),title:v('title'),bday:bd,note:v('note')})});
+    const bd=v('bday');out.push({gen,name,sid:v('sid'),dept:v('dept'),year:v('year'),phone:v('phone'),email:v('email'),city:v('city'),sector:v('sector'),org:v('org'),branch:v('branch'),title:v('title'),bday:bd,note:v('note')})});
   const m=String(fileName||'').match(/(20\d\d)[.\-_ ]?(\d{1,2})/);
   return{people:out,month:m?`${m[1]}-${String(m[2]).padStart(2,'0')}`:'',src:m?`조직관리부 ${m[1]}년 ${+m[2]}월 인명부`:'불러온 인명부'};
 }
-async function importRoster(buf,fileName){
+async function importRoster(buf,fileName,quiet){
   const X=await loadXlsxLib();const wb=X.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
   const parsed=parseRosterSheet(X.utils.sheet_to_json(ws,{header:1,raw:false,defval:null}),fileName);
-  if(!parsed||!parsed.people.length){toast('인명부 표를 찾지 못했어요. 조직관리부 인명부 엑셀인지 확인해 주세요');return false}
+  if(!parsed||!parsed.people.length){if(!quiet)toast('인명부 표를 찾지 못했어요. 조직관리부 인명부 엑셀인지 확인해 주세요');return false}
   PEOPLE=parsed.people;PEOPLE_META={src:parsed.src,month:parsed.month,count:PEOPLE.length};
-  if(DB){await DB.doc(ROSTER_DOC).set({...parsed,updatedAt:Date.now()});toast(`인명부 ${PEOPLE.length}명을 불러왔어요 (본인 계정에만 저장)`)}
-  else{try{localStorage.setItem(PKEY,JSON.stringify(parsed))}catch(_){}toast(`인명부 ${PEOPLE.length}명을 이 기기에 저장했어요`)}
+  if(DB){await DB.doc(ROSTER_DOC).set({...parsed,updatedAt:Date.now()});if(!quiet)toast(`인명부 ${PEOPLE.length}명을 불러왔어요 (본인 계정에만 저장)`)}
+  else{try{localStorage.setItem(PKEY,JSON.stringify(parsed))}catch(_){}if(!quiet)toast(`인명부 ${PEOPLE.length}명을 이 기기에 저장했어요`)}
   renderPeople();return true}
 $('peopleFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;
-  try{await importRoster(await f.arrayBuffer(),f.name)}
+  try{const ok=await importRoster(await f.arrayBuffer(),f.name,!!$('loginScr'));if(ok&&$('loginScr'))loginSubmit()}
   catch(err){toast('엑셀을 읽지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요')}
   finally{e.target.value=''}});
 // 휴대폰 앱: 카페 「명단 및 주소록」의 최신 인명부 엑셀을 앱이 직접 받아 온다 (네이버 로그인 사용)
 let ROSTER_TRIED=false;
 // 카페에서 인명부 첨부를 찾는 스크립트 — 화면 업데이트로 같이 고칠 수 있게 화면이 앱에 넘겨 준다 (앱은 보이지 않는 카페 창에서 실행)
 const ROSTER_JS="(async function(){\n  var club='27475297';\n  function done(o){HnmRoster.done(JSON.stringify(o))}\n  async function j(u){var r=await fetch(u,{credentials:'include'});if(!r.ok){var e=new Error('HTTP '+r.status);e.status=r.status;throw e}return r.json()}\n  function collect(o,pred,out,seen){out=out||[];seen=seen||new Set();if(!o||typeof o!=='object'||seen.has(o))return out;seen.add(o);if(!Array.isArray(o)&&pred(o))out.push(o);(Array.isArray(o)?o:Object.values(o)).forEach(function(v){collect(v,pred,out,seen)});return out}\n  function arts(d){return collect(d,function(o){return o.articleId!=null&&(o.subject||o.title)})}\n  try{\n    var st=0,list=[],menuIds=[33];\n    // 1) 「명단 및 주소록」(menuId 33) 목록\n    async function listOf(menuId){var lu=['https://apis.naver.com/cafe-web/cafe-boardlist-api/v1/cafes/'+club+'/menus/'+menuId+'/articles?page=1&pageSize=15&sortBy=TIME&viewType=L',\n      'https://apis.naver.com/cafe-web/cafe2/ArticleListV2dot1.json?search.clubid='+club+'&search.queryType=lastArticle&search.menuid='+menuId+'&search.page=1&search.perPage=15'];\n      for(var k=0;k<lu.length;k++){try{var a=arts(await j(lu[k]));if(a.length)return a}catch(e){st=e.status||st}}return []}\n    list=await listOf(33);\n    if(!list.length){var mu=['https://apis.naver.com/cafe-web/cafe2/SideMenuList?cafeId='+club,'https://apis.naver.com/cafe-web/cafe-cafemain-api/v1.0/cafes/'+club+'/menus'];\n      for(var i=0;i<mu.length&&!list.length;i++){try{var m=collect(await j(mu[i]),function(o){return o.menuId!=null&&/명단|주소록/.test(String(o.menuName||o.name||''))});for(var q=0;q<m.length&&!list.length;q++)list=await listOf(m[q].menuId)}catch(e){st=e.status||st}}}\n    // 2) 그래도 없으면 '인명부' 검색\n    if(!list.length){var qq=encodeURIComponent('인명부');var su=['https://apis.naver.com/cafe-web/cafe-mobile/CafeMobileWebArticleSearchListV4?cafeId='+club+'&query='+qq+'&searchBy=1&sortBy=date&page=1&perPage=20&adUnit=MW_CAFE_BOARD',\n      'https://apis.naver.com/cafe-web/cafe2/ArticleSearchListV2.json?search.clubid='+club+'&search.query='+qq+'&search.searchBy=1&search.sortBy=date&search.page=1&search.perPage=20'];\n      for(var s2=0;s2<su.length&&!list.length;s2++){try{list=arts(await j(su[s2]))}catch(e){st=e.status||st}}}\n    if(!list.length){done({ok:false,msg:(st===401||st===403)?'네이버 로그인이 필요해요 (앱 설정에서 네이버 로그인)':'카페 「명단 및 주소록」 글 목록을 읽지 못했어요'+(st?' ('+st+')':'')});return}\n    var seen={};list=list.filter(function(a){var t=String(a.subject||a.title).replace(/<[^>]+>/g,'');a._t=t;if(seen[a.articleId]||!/인명부/.test(t))return false;seen[a.articleId]=1;return true})\n      .sort(function(a,b){return Number(b.articleId)-Number(a.articleId)});\n    if(!list.length){done({ok:false,msg:'「명단 및 주소록」에 인명부 글이 없어요'});return}\n    // 3) 최신 글부터 엑셀 첨부 찾기 — 네이버는 첨부를 result.attaches[{fullName,url,type:'F'}]로 준다 (name에는 확장자가 없음)\n    for(var n=0;n<Math.min(3,list.length);n++){var a=list[n],res=null;\n      var au=['https://apis.naver.com/cafe-web/cafe-articleapi/v2.1/cafes/'+club+'/articles/'+a.articleId+'?query=&useCafeId=true&requestFrom=A','https://apis.naver.com/cafe-web/cafe-articleapi/v2/cafes/'+club+'/articles/'+a.articleId+'?query=&useCafeId=true&requestFrom=A'];\n      for(var x=0;x<au.length&&!res;x++){try{var jj=await j(au[x]);res=jj.result||jj}catch(e){st=e.status||st}}\n      if(!res)continue;\n      var files=[];var add=function(o){if(!o||typeof o!=='object')return;var nm=String(o.fullName||o.fileName||o.originalFileName||o.originalName||o.name||'');var ext=String(o.extension||o.fileExtension||o.ext||'');\n        if(ext&&!/\\.[A-Za-z0-9]+$/.test(nm))nm+='.'+ext.replace(/^\\./,'');var u=String(o.url||o.downloadUrl||o.downloadURL||o.link||o.fileUrl||'');\n        if(/^https:/.test(u)&&/\\.xlsx?$/i.test(nm)&&!files.some(function(f){return f.url===u}))files.push({name:nm,url:u})};\n      (Array.isArray(res.attaches)?res.attaches:[]).forEach(add);\n      collect(res,function(o){if((o.fullName||o.fileName||o.originalName)&&(o.url||o.downloadUrl||o.link))add(o);return false});\n      var H=String(((res.article||{}).contentHtml)||'');var doc=new DOMParser().parseFromString('<div>'+H+'</div>','text/html');\n      doc.querySelectorAll('[data-module],[data-linkdata]').forEach(function(el){try{collect(JSON.parse(el.getAttribute('data-module')||el.getAttribute('data-linkdata')),function(o){if((o.fileName||o.name)&&(o.link||o.downloadUrl||o.url))add(o);return false})}catch(e){}});\n      if(files.length){done({ok:true,name:files[0].name,url:files[0].url,title:a._t,articleId:a.articleId});return}\n    }\n    done({ok:false,msg:'최신 인명부 글('+list[0]._t+')에서 엑셀 첨부를 찾지 못했어요'+(st?' ('+st+')':'')});\n  }catch(e){done({ok:false,msg:'인명부 찾기 오류: '+String(e&&e.message||e)})}\n})();\n";
-async function rosterFromCafe(quiet){
-  if(!window.HnmNative)return;const b=$('peopleCafe');ROSTER_TRIED=true;
+async function rosterFromCafe(quiet,onStep){
+  if(!window.HnmNative)return {ok:false,msg:'앱에서만 카페 인명부를 받을 수 있어요'};const b=$('peopleCafe');ROSTER_TRIED=true;
   if(b){b.disabled=true;b.textContent='카페에서 인명부 찾는 중…'}
-  try{const r=await bridgeCall('hnm-roster-request','hnm-roster',{articleId:1,js:ROSTER_JS},{ms:90000,onProgress:t=>{if(b)b.textContent=`${t}…`}});
-    if(!r||!r.ok||!r.b64){if(!quiet)toast((r&&r.msg)||'카페에서 인명부를 찾지 못했어요. 엑셀 파일로 불러와 주세요');return}
+  try{const r=await bridgeCall('hnm-roster-request','hnm-roster',{articleId:1,js:ROSTER_JS},{ms:90000,onProgress:t=>{if(b)b.textContent=`${t}…`;onStep&&onStep(t)}});
+    if(!r||!r.ok||!r.b64){const msg=(r&&r.msg)||'카페에서 인명부를 찾지 못했어요. 엑셀 파일로 불러와 주세요';if(!quiet)toast(msg);return {ok:false,msg}}
     const bin=atob(r.b64);const u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);
-    await importRoster(u.buffer,r.name||r.title||'인명부.xlsx');track('roster_cafe',r.name||'')}
-  catch(e){if(!quiet)toast('인명부를 읽지 못했어요. 인터넷 연결을 확인해 주세요')}
+    const ok=await importRoster(u.buffer,r.name||r.title||'인명부.xlsx',quiet);track('roster_cafe',r.name||'');return {ok:!!ok,msg:ok?'':'인명부 표를 읽지 못했어요'}}
+  catch(e){if(!quiet)toast('인명부를 읽지 못했어요. 인터넷 연결을 확인해 주세요');return {ok:false,msg:'인명부를 읽지 못했어요. 인터넷 연결을 확인해 주세요'}}
   finally{if(b){b.disabled=false;b.textContent='카페에서 최신 인명부 받기'}}}
 if(window.HnmNative){$('peopleCafe').hidden=false;$('peopleCafe').onclick=()=>rosterFromCafe(false)}
 
@@ -1705,7 +1735,7 @@ const TABS=['week','write','month','feed','rec'];
 // 휴대폰 앱(HnmNative)에서만 수집한다. 동의하지 않으면 아무것도 보내지 않는다.
 const NATIVE_TRACK=()=>!!(window.HnmNative&&typeof HnmNative.track==='function');
 function consentOn(){return S.consent!==false&&(S.consent===true||!MEMBER)}
-function track(name,detail,kind){if(!NATIVE_TRACK()||!consentOn())return;try{HnmNative.track(JSON.stringify({kind:kind||'use',name:String(name).slice(0,60),detail:detail==null?'':String(detail).slice(0,300),screen:curTab,nick:nickNow()}))}catch(_){}}
+function track(name,detail,kind){if(!NATIVE_TRACK()||!consentOn())return;try{uLog(kind||'use',name,detail)}catch(_){}try{HnmNative.track(JSON.stringify({kind:kind||'use',name:String(name).slice(0,60),detail:detail==null?'':String(detail).slice(0,300),screen:curTab,nick:nickNow()}))}catch(_){}}
 let curTab='week';
 function setupSheet(){
   const gens=['35기','36기','37기','38기','39기','40기'];
@@ -1724,16 +1754,138 @@ function setupSheet(){
     announce();renderAll();acctRefresh();track('setup_done',S.me.gen);toast(`${nickNow()}님, 반가워요. 카페를 확인하고 있어요`);
     const a=acctState();if(a&&!a.naver&&HnmNative.login)setTimeout(()=>HnmNative.login(),900)};
 }
+/* ---------- 사용 기록: 하루 한 번 자동으로 회장 시트에 보냄 (동의한 경우만) ----------
+   보내는 것: 쓴 기능·버튼 이름, 화면별 머문 시간, 오래 걸린 작업(ms), 오류 메시지, 실패 안내·연타 같은 '막힘 신호'
+   보내지 않는 것: 카페 글·댓글 내용, 인명부(연락처), 질문 원문 */
+const TEL_URL="",TEL_KEY='hnm-2026',UKEY='hnm-usage';
+const U=(()=>{let u=null;try{u=JSON.parse(localStorage.getItem(UKEY)||'null')}catch(_){}u=u&&typeof u==='object'?u:{};u.q=Array.isArray(u.q)?u.q:[];u.done=Array.isArray(u.done)?u.done:[];
+  if(!u.id)u.id=Math.random().toString(36).slice(2,10);return u})();
+function uSave(){try{localStorage.setItem(UKEY,JSON.stringify(U))}catch(_){}}
+function uOn(){return !!TEL_URL&&!!window.HnmNative&&consentOn()}
+function uSum(){const d=ymd(new Date());if(!U.sum||U.sum.day!==d){if(U.sum)U.done=U.done.concat([U.sum]).slice(-7);U.sum={day:d,opens:0,ms:0,errors:0,stuck:0,tabs:{},slow:[]}}return U.sum}
+function uLog(kind,name,detail,ms){if(!uOn())return;const e={ts:new Date().toISOString(),kind:String(kind),name:String(name||'').slice(0,60),detail:detail==null?'':String(detail).slice(0,500),screen:curTab};
+  if(ms!=null)e.ms=Math.round(ms);const last=U.q[U.q.length-1];
+  if(last&&ms==null&&last.kind===e.kind&&last.name===e.name&&last.detail===e.detail)last.n=(last.n||1)+1;else U.q.push(e);
+  if(U.q.length>600)U.q=U.q.slice(-600);
+  const s=uSum();if(kind==='error')s.errors++;if(kind==='stuck')s.stuck++;
+  if(kind==='screen')s.tabs[e.name]=(s.tabs[e.name]||0)+Math.round((ms||0)/1000);
+  if(kind==='timing'&&ms!=null){s.slow.push([e.name,e.ms]);s.slow.sort((a,b)=>b[1]-a[1]);s.slow=s.slow.slice(0,5)}
+  clearTimeout(uLog._t);uLog._t=setTimeout(uSave,800)}
+// 화면(탭)별 머문 시간, 앱 사용 시간
+let uTabAt=performance.now(),uVisAt=Date.now();
+function uTab(){const now=performance.now(),ms=now-uTabAt;uTabAt=now;if(ms>1500&&ms<36e5&&!document.hidden)uLog('screen',curTab,'',ms)}
+document.addEventListener('visibilitychange',()=>{if(!uOn())return;const s=uSum();
+  if(document.hidden){uTab();s.ms+=Math.min(36e5,Date.now()-uVisAt);uSave();uFlush(false,true)}
+  else{if(Date.now()-uVisAt>5*6e4)s.opens++;uVisAt=Date.now();uTabAt=performance.now();uFlush()}});
+// 막힘 신호: 같은 버튼을 1.2초 안에 3번 이상 누름 / 화면이 0.8초 넘게 멈춤
+let uClk={k:'',n:0,t:0};
+document.addEventListener('click',e=>{const el=e.target.closest('button,a,[role=button]');if(!el)return;const k=el.id||(el.textContent||'').trim().slice(0,24);const t=Date.now();
+  if(k===uClk.k&&t-uClk.t<1200){if(++uClk.n===3)uLog('stuck','연타',k)}else uClk={k,n:1,t:t};uClk.t=t},true);
+try{new PerformanceObserver(l=>l.getEntries().forEach(x=>{if(x.duration>800)uLog('timing','화면 멈춤',curTab,x.duration)})).observe({type:'longtask',buffered:true})}catch(_){}
+function uDevice(){const m=navigator.userAgent.match(/Android ([\d.]+);\s*([^;)]+)/);return m?`${m[2].split(' Build')[0].trim()} / Android ${m[1]}`:navigator.userAgent.slice(0,60)}
+function uInfo(){let i={};try{i=JSON.parse(HnmNative.info()||'{}')}catch(_){}return i}
+function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610131321',device:uDevice(),events,summaries}}
+async function uPost(body,beacon){const j=JSON.stringify(body);
+  if(beacon&&j.length<60000&&navigator.sendBeacon)return navigator.sendBeacon(TEL_URL,new Blob([j],{type:'text/plain;charset=utf-8'}));
+  await fetch(TEL_URL,{method:'POST',mode:'no-cors',keepalive:j.length<60000,headers:{'Content-Type':'text/plain;charset=utf-8'},body:j});return true}
+// 피드백처럼 바로 보내야 하는 것
+function uSendNow(events){if(!TEL_URL||!window.HnmNative)return;uPost(uBody(events,[])).catch(()=>{})}
+// 하루 한 번(20시간 간격) 쌓인 기록 + 지난 날 요약을 보냄
+async function uFlush(force,beacon){if(!uOn()||uFlush._busy)return;const now=Date.now();if(!force&&U.sentAt&&now-U.sentAt<20*36e5)return;
+  if(!U.q.length&&!U.done.length)return;uFlush._busy=true;
+  try{const ev=U.q.slice(0,400).map(e=>e.n?Object.assign({},e,{detail:`${e.detail} (×${e.n})`}):e);
+    const sums=U.done.map(s=>({day:s.day,opens:s.opens,minutes:Math.round((s.ms||0)/6e4),errors:s.errors,stuck:s.stuck,tabs:s.tabs,slow:s.slow}));
+    const ok=await uPost(uBody(ev,sums),beacon);
+    if(ok!==false){U.q=U.q.slice(ev.length);U.done=[];U.sentAt=now;uSave();uTelInfo()}}
+  catch(_){}finally{uFlush._busy=false}}
+function uTelInfo(){const el=$('telInfo');if(!el)return;if(!TEL_URL){el.hidden=true;return}
+  const t=U.sentAt?new Date(U.sentAt):null;el.textContent=consentOn()?`하루 한 번 자동으로 보내요 · 마지막 전송 ${t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'아직 없음'} · 대기 ${U.q.length}건`:'꺼져 있어요';el.hidden=!window.HnmNative}
+const uBoot=performance.now();
+if(window.HnmNative&&TEL_URL){const s=uSum();s.opens++;uSave();
+  setTimeout(()=>{uLog('timing','앱 화면 준비','',uBoot);uFlush()},8000);setTimeout(uTelInfo,0)}
+/* ---------- 회원 로그인: 기수·이름·학번을 조직관리부 인명부와 맞춰 본인 확인 ----------
+   인명부는 네이버 카페(회원만 볼 수 있음)에서 받아 이 휴대폰에만 저장. 학번은 확인에만 쓰고 따로 저장하지 않음 */
+const LG={fails:0,lockUntil:0,busy:false};
+const digits=v=>String(v==null?'':v).replace(/\D/g,'');
+const lgName=v=>normName(v).replace(/^\d+기/,'');
+function showLogin(){if($('loginScr'))return;closeSheet();const logo=(document.querySelector('.brand .logo')||{}).src||'';
+  const gens=[];for(let g=40;g>=1;g--)gens.push(`${g}기`);const m=S.me||{};const def=m.gen||'38기';
+  const el=document.createElement('div');el.className='login';el.id='loginScr';el.setAttribute('role','dialog');el.setAttribute('aria-label','회원 로그인');
+  el.innerHTML=`<div class="login-top"><div class="login-ring">${logo?`<img src="${logo}" alt="금융학회 황금나침반">`:''}</div><h1>황나 메이트</h1><p>황금나침반 활동 비서</p></div>
+    <form class="login-card" id="lgForm" autocomplete="off" novalidate>
+      <h2>회원 확인</h2><p class="sub">조직관리부 인명부에 있는 정보로 로그인해요</p>
+      <div class="lg-row"><label class="lg-f">기수<select id="lgGen">${gens.map(g=>`<option${g===def?' selected':''}>${g}</option>`).join('')}</select></label>
+        <label class="lg-f">이름<input id="lgName" type="text" placeholder="예: 정지연" value="${esc(m.name||'')}" autocomplete="name"></label></div>
+      <label class="lg-f">학번<input id="lgSid" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="예: 202012345" maxlength="12"></label>
+      <div class="lg-steps" id="lgSteps" hidden><span data-s="naver">네이버 로그인</span><span data-s="roster">인명부 확인</span><span data-s="match">본인 확인</span></div>
+      <div class="lg-err" id="lgErr" hidden></div>
+      <div class="lg-alt" id="lgAlt" hidden></div>
+      ${NATIVE_TRACK()?`<label class="lg-consent"><input type="checkbox" id="lgConsent" ${S.consent===false?'':'checked'}><span>앱 개선을 위해 사용 기록·오류를 회장에게 보내기 (카페 글·연락처는 보내지 않아요)</span></label>`:''}
+      <button class="lg-go" id="lgGo" type="submit">로그인</button>
+    </form>
+    <div class="lg-foot">처음 한 번만 확인해요. 카페에서 인명부를 받을 때 네이버 로그인이 필요해요.<br>학번은 확인에만 쓰고 저장하지 않아요.</div>`;
+  document.body.appendChild(el);document.body.style.overflow='hidden';
+  $('lgForm').onsubmit=e=>{e.preventDefault();loginSubmit()};
+  $('lgSid').oninput=()=>{const v=digits($('lgSid').value);if(v!==$('lgSid').value)$('lgSid').value=v};
+  setTimeout(()=>{(m.name?$('lgSid'):$('lgName')).focus()},250);track('login_show')}
+function closeLogin(){const el=$('loginScr');if(el)el.remove();document.body.style.overflow=''}
+function lgStep(k,state){const box=$('lgSteps');if(!box)return;box.hidden=false;const sp=box.querySelector(`[data-s="${k}"]`);if(sp){sp.classList.remove('on','done');if(state)sp.classList.add(state)}}
+function lgErr(msg,alts){const e=$('lgErr'),a=$('lgAlt');if(!e)return;e.hidden=!msg;e.textContent=msg||'';a.hidden=!(alts&&alts.length);a.innerHTML='';
+  (alts||[]).forEach(([label,fn])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;a.appendChild(b)})}
+function lgBusy(on,label){const b=$('lgGo');if(!b)return;LG.busy=on;b.disabled=on;b.textContent=on?(label||'확인 중…'):'로그인'}
+function rosterHasSid(){return !!(PEOPLE&&PEOPLE.length&&PEOPLE.some(p=>p.sid))}
+// 네이버 로그인 화면을 열고, 돌아오면 결과(hnm-account)를 받는다
+function naverLoginWait(){return new Promise(res=>{let t;const fn=e=>{const d=e.data;if(e.source!==window||!d||d.type!=='hnm-account')return;window.removeEventListener('message',fn);clearTimeout(t);res(!!d.naver)};
+  window.addEventListener('message',fn);t=setTimeout(()=>{window.removeEventListener('message',fn);res(false)},5*6e4);try{HnmNative.login()}catch(_){res(false)}})}
+function lgFileAlt(){return ['인명부 엑셀로 확인',()=>{$('peopleFile').click()}]}
+async function lgGetRoster(force){
+  if(rosterHasSid()&&!force)return true;
+  if(!window.HnmNative){lgErr('이 화면에서는 카페에서 인명부를 받을 수 없어요. 인명부 엑셀 파일로 확인해 주세요.',[lgFileAlt()]);return false}
+  const a=acctState();
+  if(a&&!a.naver){lgStep('naver','on');lgBusy(true,'네이버 로그인 중…');const ok=await naverLoginWait();
+    if(!ok){lgStep('naver');lgErr('네이버 로그인이 필요해요. 황금나침반 카페에 가입된 계정으로 로그인해 주세요.',[['네이버 로그인',()=>loginSubmit()]]);return false}}
+  lgStep('naver','done');lgStep('roster','on');lgBusy(true,'카페에서 인명부 받는 중…');
+  const r=await rosterFromCafe(true,t=>lgBusy(true,`${t}…`));
+  if(!r||!r.ok){lgStep('roster');const needLogin=/로그인/.test((r&&r.msg)||'');
+    lgErr(((r&&r.msg)||'카페에서 인명부를 받지 못했어요.')+(needLogin?'':' 잠시 뒤 다시 눌러 주세요.'),
+      [needLogin?['네이버 로그인',()=>{HnmNative.login?naverLoginWait().then(ok=>ok&&loginSubmit()):HnmNative.openCafe(CAFE_HOME,'')}]:['다시 시도',()=>loginSubmit(true)],lgFileAlt()]);return false}
+  lgStep('roster','done');return rosterHasSid()}
+async function loginSubmit(force){if(LG.busy)return;
+  const gen=$('lgGen').value,name=lgName($('lgName').value),sid=digits($('lgSid').value);
+  if(Date.now()<LG.lockUntil){lgErr(`여러 번 틀려서 잠시 막혔어요. ${Math.ceil((LG.lockUntil-Date.now())/6e4)}분 뒤 다시 해 주세요.`);return}
+  if(!/^[가-힣A-Za-z]{2,10}$/.test(name)){lgErr('이름을 카페 닉네임과 같게 한글로 적어 주세요 (예: 정지연)');$('lgName').focus();return}
+  if(sid.length<6){lgErr('학번을 숫자로 모두 적어 주세요');$('lgSid').focus();return}
+  lgErr('');lgBusy(true);
+  try{
+    if(!(await lgGetRoster(force)))return;
+    const find=()=>PEOPLE.filter(p=>lgName(p.name)===name&&String(p.gen).replace(/\s/g,'')===gen);
+    let cand=find();
+    // 인명부에 없으면 카페에서 더 최신 인명부가 있는지 한 번 더 확인
+    if(!cand.length&&!force&&window.HnmNative&&!LG.refetched){LG.refetched=true;if(await lgGetRoster(true))cand=find()}
+    lgStep('match','on');
+    if(!cand.length){lgStep('match');track('login_fail','not_found','use');lgErr(`인명부(${(PEOPLE_META&&PEOPLE_META.src)||'최신'})에서 ${gen} ${name}님을 찾지 못했어요. 기수와 이름을 확인해 주세요. 새로 들어온 회원이면 다음 인명부가 올라온 뒤 로그인할 수 있어요.`);return}
+    const ok=cand.find(p=>digits(p.sid)===sid);
+    if(!ok){lgStep('match');LG.fails++;track('login_fail',cand.some(p=>p.sid)?'sid_mismatch':'no_sid','use');
+      if(LG.fails>=5){LG.lockUntil=Date.now()+5*6e4;LG.fails=0}
+      lgErr(cand.some(p=>p.sid)?'학번이 인명부와 달라요. 다시 확인해 주세요.':'인명부에 학번이 비어 있어요. 조직관리부(인명부 담당)에 학번 등록을 부탁해 주세요.');$('lgSid').select();return}
+    lgStep('match','done');
+    S.me={gen,name,verified:Date.now(),rosterMonth:(PEOPLE_META&&PEOPLE_META.month)||''};if($('lgConsent'))S.consent=$('lgConsent').checked;save();
+    $('meGen').value=S.me.gen;$('meName').value=S.me.name;$('whoLabel').textContent=whoText();syncConsentUi();
+    if(NATIVE_TRACK()){try{HnmNative.setConsent(consentOn())}catch(_){}}
+    track('login_ok',gen);closeLogin();announce();renderAll();acctRefresh();try{renderPeople()}catch(_){}
+    toast(`${nickNow()}님, 반가워요. 카페를 확인하고 있어요`);
+  }finally{lgBusy(false)}}
 function syncConsentUi(){const c=$('consentChk');if(c)c.checked=consentOn()}
 function initMemberAndTelemetry(){
   if(MEMBER){$('recSub').textContent='· 카페 자동 확인'}
   if(NATIVE_TRACK()){
     document.querySelectorAll('.app-only').forEach(e=>e.hidden=false);
-    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610131247'}`}catch(_){}
+    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610131321'}`}catch(_){}
     syncConsentUi();
-    $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요')};
+    $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요');uTelInfo()};
     try{HnmNative.setConsent(consentOn())}catch(_){}
     $('fbkSend').onclick=()=>{const t=$('fbkText').value.trim();if(t.length<2){toast('내용을 적어 주세요');return}
+      try{uSendNow([{ts:new Date().toISOString(),kind:'feedback',name:'feedback',detail:t.slice(0,2000),screen:curTab}])}catch(_){}
       try{HnmNative.track(JSON.stringify({kind:'feedback',name:'feedback',detail:t.slice(0,2000),screen:curTab,nick:nickNow()}));$('fbkText').value='';toast('보냈어요. 고마워요!')}catch(_){toast('보내지 못했어요')}};
     // 버튼·링크 사용 기록 (글자는 버튼 이름만)
     document.addEventListener('click',e=>{const el=e.target.closest('button,a');if(!el||el.closest('#suGo'))return;
@@ -1742,7 +1894,7 @@ function initMemberAndTelemetry(){
     window.addEventListener('error',e=>track('js_error',`${e.message} @${(e.filename||'').split('/').pop()}:${e.lineno}`,'error'));
     window.addEventListener('unhandledrejection',e=>track('js_reject',String(e.reason&&e.reason.message||e.reason),'error'));
   }
-  if(MEMBER&&!S.me.name)setTimeout(setupSheet,300);
+  if(MEMBER&&!(S.me.name&&S.me.verified))setTimeout(showLogin,0);
 }
 // 계정: 네이버 로그인 상태 + 회원(기수·이름), 로그인·로그아웃
 const CAFE_HOME='https://m.cafe.naver.com/cbnugoldencompass';
@@ -1763,7 +1915,7 @@ function acctLogout(){
     $('meGen').value=S.me.gen||'';$('meName').value=S.me.name||'';$('whoLabel').textContent=whoText();syncConsentUi();
     closeSheet();try{renderAll()}catch(_){}try{renderPeople()}catch(_){}acctRefresh(full?{naver:false}:null);
     toast(full?'로그아웃했어요':'내 정보를 지웠어요. 네이버 로그아웃은 앱을 새 버전으로 업데이트하면 돼요');
-    if(MEMBER)setTimeout(setupSheet,500)}}
+    if(MEMBER)setTimeout(showLogin,300)}}
 if(window.HnmNative){$('acctLogin').onclick=acctLogin;$('acctLogout').onclick=acctLogout;setTimeout(()=>acctRefresh(),0)}
 window.addEventListener('message',e=>{const d=e.data;if(e.source!==window||!d||d.type!=='hnm-account')return;acctRefresh(d)});
 // 화면 자동 업데이트: 휴대폰 앱이 새 화면을 받아 두면 알려 줌 → 누르면 바로 적용
@@ -1773,7 +1925,7 @@ window.addEventListener('message',e=>{const d=e.data;if(e.source!==window||!d||d
 window.addEventListener('message',e=>{const d=e.data;if(e.source!==window||!d||d.type!=='hnm-update')return;
   $('updText').textContent=`새 버전 ${d.versionName||''}이 나왔어요${d.notes?` · ${d.notes}`:''}`;$('updBanner').hidden=false;
   $('updGo').onclick=()=>{track('update_click',d.versionName);if(window.HnmNative)HnmNative.openUrl(d.url);else window.open(d.url,'_blank')}});
-function go(t){curTab=t;if(t==='rec'&&window.HnmNative&&!ROSTER_TRIED){const cur=ymd(new Date()).slice(0,7);if(!PEOPLE||!(PEOPLE_META&&PEOPLE_META.month)||PEOPLE_META.month<cur.replace(/-(\d\d)$/,(m,x)=>'-'+String(Math.max(1,+x-1)).padStart(2,'0')))setTimeout(()=>rosterFromCafe(true),400)}document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));TABS.forEach(x=>$('view-'+x).hidden=x!==t);window.scrollTo({top:0})}
+function go(t){try{uTab()}catch(_){}curTab=t;if(t==='rec'&&window.HnmNative&&!ROSTER_TRIED){const cur=ymd(new Date()).slice(0,7);if(!PEOPLE||!(PEOPLE_META&&PEOPLE_META.month)||PEOPLE_META.month<cur.replace(/-(\d\d)$/,(m,x)=>'-'+String(Math.max(1,+x-1)).padStart(2,'0')))setTimeout(()=>rosterFromCafe(true),400)}document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));TABS.forEach(x=>$('view-'+x).hidden=x!==t);window.scrollTo({top:0})}
 function pickW(w){document.querySelectorAll('#writeSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.w===w));['fb','cm','sp','ec'].forEach(x=>$('w-'+x).hidden=x!==w)}
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>go(b.dataset.tab));
 document.querySelectorAll('#writeSeg button').forEach(b=>b.onclick=()=>pickW(b.dataset.w));
