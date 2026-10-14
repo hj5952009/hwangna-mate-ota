@@ -1,7 +1,7 @@
 {
- "pageVersion": 2610131538,
- "sha256": "b5e6f244a34b0262fc7f905c8938fe85f1782a4f3978b7e6ba0607cdb26d2084",
+ "pageVersion": 2610150249,
+ "sha256": "882a13fa6f3d90052288f0951a407129e06cf2fd759d042d59aadc714ae5974f",
  "minVersionCode": 15,
- "notes": "경제스터디 자료 마감 표시 개선",
- "publishedAt": "2026-10-13T06:39:29.292958+00:00"
+ "notes": "시행 댓글 복사 오류 수정 · 날짜 자동 맞춤",
+ "publishedAt": "2026-10-14T17:50:31.053974+00:00"
 }

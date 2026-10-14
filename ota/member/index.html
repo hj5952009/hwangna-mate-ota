@@ -443,12 +443,14 @@ nav.tabs{border-top-color:transparent;box-shadow:0 -1px 0 var(--line),0 -6px 16p
         <p class="note save-hint" style="margin-top:6px">저장한 이미지를 S5 게시판 "평가표" 글에 올리세요.</p></div>
       <h3 style="margin-top:6px">카페에 올리기</h3>
       <label class="f">시행일<input type="text" id="spDate" data-cal="dot" readonly></label>
+      <p class="note" id="spDateNote"></p>
       <dl class="kv">
         <dt>제목</dt><dd><span id="spTitle"></span> <button class="btn sm" id="spTitleCopy">복사</button></dd>
         <dt>시행 댓글</dt><dd><span id="spExec"></span> <button class="btn sm" id="spExecCopy">복사</button></dd>
       </dl>
       <div class="actions" style="grid-column:auto;margin:0">
         <a class="btn" id="spBoard" target="_blank" rel="noopener">S5 게시판 열기 ↗</a>
+        <a class="btn" id="spMine" target="_blank" rel="noopener" hidden>내 글에 시행 댓글 ↗</a>
       </div>
     </div>
 
@@ -466,6 +468,7 @@ nav.tabs{border-top-color:transparent;box-shadow:0 -1px 0 var(--line),0 -6px 16p
         <label class="f">시작<input type="time" id="ecStart" value="18:00"></label>
         <label class="f">종료<input type="time" id="ecEnd" value="19:00"></label>
       </div>
+      <p class="note" id="ecDateNote"></p>
       <div class="row">
         <label class="f">문제 풀이량<input type="text" id="ecRange" placeholder="예: 1p ~ 30p"></label>
         <label class="f">진도율(%)<input type="text" id="ecProg" inputmode="decimal" placeholder="예: 10%"></label>
@@ -963,13 +966,23 @@ $('spSave').onclick=e=>saveImg('sp',e.currentTarget);
 // 스피치: 제목·시행 댓글 (경제스터디 양식과 같은 방식)
 const spTitle=()=>`${me().name} 평가표`;
 function spExec(){const d=parseYmd(S.spDate||'')||new Date();const post=typeof speechPostFor==='function'?speechPostFor(ymd(d)):null;return `${dot(d)} 스터디 시행(${dot(post?kstDate(post.writtenAt):new Date())} 업로드 완료)`}
-function renderSpPost(){if(!S.spDate){const l=S.logs.filter(x=>x.kind==='speech'&&x.state==='done').sort((a,b)=>b.date.localeCompare(a.date))[0];S.spDate=dot(l?parseYmd(l.date):new Date())}
+// '이번 달 › 스터디 기록'에 오늘까지의 기록이 있으면 그 날짜를 시행일로 씀. 기록보다 나중에 직접 바꾼 날짜가 있으면 그걸 존중
+function latestLog(kind){const t=ymd(new Date());return S.logs.filter(x=>x.kind===kind&&x.date<=t).sort((a,b)=>b.date.localeCompare(a.date)||Number(b.id)-Number(a.id))[0]||null}
+function dateNote(id,src,L,onSync){const el=$(id);if(!el)return;el.innerHTML='';
+  if(src==='log'&&L){el.textContent=`'이번 달' 스터디 기록(${L.date.slice(5).replace('-','/')})에 맞춘 날짜예요 · 직접 바꿀 수 있어요`}
+  else if(L){el.append(`직접 정한 날짜예요 · `);const b=document.createElement('button');b.className='btn sm';b.textContent=`기록 날짜(${L.date.slice(5).replace('-','/')})로 맞추기`;b.onclick=onSync;el.append(b)}
+  else el.textContent='\'이번 달 › 스터디 기록\'에 시행 기록을 넣으면 날짜가 자동으로 맞춰져요'}
+function renderSpPost(){const L=latestLog('speech');
+  if(L&&(!S.spDateAt||Number(L.id)>S.spDateAt)){if(S.spDate!==dot(parseYmd(L.date))){S.spDate=dot(parseYmd(L.date))}S.spDateSrc='log'}
+  if(!S.spDate){S.spDate=dot(new Date());S.spDateSrc=''}
   if(document.activeElement!==$('spDate'))$('spDate').value=S.spDate;$('spTitle').textContent=spTitle();$('spExec').textContent=spExec();
-  $('spBoard').textContent=`${speechTeam()} 게시판 열기 ↗`}
-$('spDate').addEventListener('input',()=>{S.spDate=$('spDate').value;save();renderSpPost()});
+  dateNote('spDateNote',S.spDateSrc,L,()=>{S.spDateAt=0;save();renderSpPost();toast('스터디 기록 날짜로 맞췄어요')});
+  $('spBoard').textContent=`${speechTeam()} 게시판 열기 ↗`;
+  const d=parseYmd(S.spDate);const post=d&&speechPostFor(ymd(d));const m=$('spMine');m.hidden=!post;
+  if(post){m.href=artUrl('study',post.articleId)+focusHash({mode:'comment'});m.dataset.focus=JSON.stringify({mode:'comment',club:CLUB.study,articleId:post.articleId,text:spExec()});m.textContent='내 글에 시행 댓글 달기 ↗ (댓글 자동 복사)'}}
+$('spDate').addEventListener('input',()=>{S.spDate=$('spDate').value;S.spDateAt=Date.now();S.spDateSrc='manual';save();renderSpPost()});
 $('spTitleCopy').onclick=()=>copy(spTitle(),'제목을 복사했어요');
 $('spExecCopy').onclick=()=>copy(spExec(),'시행 댓글을 복사했어요. 내 글 댓글에 붙여넣으세요');
-$('spBoard').addEventListener('click',()=>copy(spTitle(),'제목을 복사해 두었어요. 글쓰기에서 붙여넣으세요'));
 
 /* ---------- 미니 캘린더 ---------- */
 const Cal={el:null,input:null,view:null};
@@ -1048,9 +1061,11 @@ const EC_F={ecKind:'kind',ecRound:'round',ecBook:'book',ecDate:'date',ecStart:'s
 function ecDefaults(){S.ec=S.ec||{};const E=S.ec,T=econTeam();
   const def={kind:T.kind,book:'황정빈의 경제학 700제',place:'동아리전용관 동아리방',start:'18:00',end:'19:00',name:me().name,date:dot(new Date()),round:`${econRound(ymd(new Date()))}회차`};
   Object.keys(def).forEach(k=>{if(!E[k])E[k]=def[k]})}
-function loadEc(){ecDefaults();Object.entries(EC_F).forEach(([id,k])=>{if(document.activeElement!==$(id))$(id).value=S.ec[k]||''});renderEc()}
+function ecSyncDate(){S.ec=S.ec||{};const L=latestLog('econ');
+  if(L&&(!S.ec.dateAt||Number(L.id)>S.ec.dateAt)){const v=dot(parseYmd(L.date));if(S.ec.date!==v){S.ec.date=v;S.ec.round=`${econRound(L.date)}회차`}S.ec.dateSrc='log'}return L}
+function loadEc(){ecDefaults();ecSyncDate();Object.entries(EC_F).forEach(([id,k])=>{if(document.activeElement!==$(id))$(id).value=S.ec[k]||''});renderEc()}
 // 이번 달 기록의 '시행' 기록에서 바로 양식으로 넘어올 때
-function ecFromLog(l){ecDefaults();const d=parseYmd(l.date);S.ec.date=dot(d);S.ec.round=`${econRound(l.date)}회차`;S.ec.core='';S.ec.wrong='';S.ec.range='';S.ec.prog='';save();loadEc();ecPh[0]=ecPh[1]=null;$('ecPh1').value='';$('ecPh2').value='';$('ecImgWrap').hidden=true}
+function ecFromLog(l){ecDefaults();const d=parseYmd(l.date);S.ec.date=dot(d);S.ec.dateAt=0;S.ec.dateSrc='log';S.ec.round=`${econRound(l.date)}회차`;S.ec.core='';S.ec.wrong='';S.ec.range='';S.ec.prog='';save();loadEc();ecPh[0]=ecPh[1]=null;$('ecPh1').value='';$('ecPh2').value='';$('ecImgWrap').hidden=true}
 const ecV=()=>{const E=S.ec||{};let prog=String(E.prog||'').trim();if(/^\d+(\.\d+)?$/.test(prog))prog+='%';return{...E,prog}};
 const ecDateStr=v=>String(v.date||'').replace(/\.\s*/g,'. ').trim();
 const ecTitle=()=>`${econTeam().short} 경제스터디 ${(S.ec&&S.ec.round)||''}`.trim();
@@ -1058,15 +1073,16 @@ function ecExec(){const v=ecV();const d=parseYmd(v.date)||new Date();const post=
 function ecText(){const v=ecV();
   return `스터디 구분: ${v.kind||''}\n스터디 회차: ${v.round||''}\n학습 교재: ${v.book||''}\n일시: ${v.date||''} (${v.start||''} - ${v.end||''})\n문제 풀이량: ${v.range||''}${v.prog?` (진도율 ${v.prog})`:''}\n장소: ${v.place||''}\n이름: ${v.name||''}\n\n[오늘의 핵심 개념]\n${v.core||''}\n\n[오답 분석 및 취약점]\n${v.wrong||''}`}
 function renderEc(){
+  const L=ecSyncDate();if(document.activeElement!==$('ecDate'))$('ecDate').value=S.ec.date||'';if(document.activeElement!==$('ecRound'))$('ecRound').value=S.ec.round||'';
+  dateNote('ecDateNote',S.ec.dateSrc,L,()=>{S.ec.dateAt=0;save();renderEc();toast('스터디 기록 날짜로 맞췄어요')});
   $('ecTitle').textContent=ecTitle();$('ecExec').textContent=ecExec();
   const T=econTeam();$('ecBoard').href=T.url;$('ecBoard').textContent=`${T.short} 게시판 열기 ↗`;
   const d=parseYmd((S.ec||{}).date||'');const post=d&&econPostFor(ymd(d));const m=$('ecMine');m.hidden=!post;
   if(post){m.href=artUrl('study',post.articleId)+focusHash({mode:'comment'});m.dataset.focus=JSON.stringify({mode:'comment',club:CLUB.study,articleId:post.articleId,text:ecExec()});m.textContent=post.my&&post.my.at?'내 글 열기 (시행 댓글 확인됨) ↗':'내 글에 시행 댓글 달기 ↗'}
 }
-Object.entries(EC_F).forEach(([id,k])=>$(id).addEventListener('input',()=>{S.ec=S.ec||{};S.ec[k]=$(id).value;save();renderEc()}));
+Object.entries(EC_F).forEach(([id,k])=>$(id).addEventListener('input',()=>{S.ec=S.ec||{};S.ec[k]=$(id).value;if(k==='date'){S.ec.dateAt=Date.now();S.ec.dateSrc='manual'}save();renderEc()}));
 $('ecTitleCopy').onclick=()=>copy(ecTitle(),'제목을 복사했어요');
 $('ecExecCopy').onclick=()=>copy(ecExec(),'시행 댓글을 복사했어요. 내 글 댓글에 붙여넣으세요');
-$('ecBoard').addEventListener('click',()=>copy(ecTitle(),'제목을 복사해 두었어요. 글쓰기에서 붙여넣으세요'));
 const ecPh=[null,null];
 ['ecPh1','ecPh2'].forEach((id,k)=>$(id).onchange=()=>{const f=$(id).files&&$(id).files[0];if(!f){ecPh[k]=null;return}
   const img=new Image();img.onload=()=>{ecPh[k]=img;$('ecPhNote').textContent=`사진 ${ecPh.filter(Boolean).length}장 준비됐어요. 이미지에만 들어가고 저장되지 않아요.`};img.onerror=()=>{ecPh[k]=null;toast('사진을 읽지 못했어요')};img.src=URL.createObjectURL(f)});
@@ -1799,7 +1815,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('button,a,[role=
 try{new PerformanceObserver(l=>l.getEntries().forEach(x=>{if(x.duration>800)uLog('timing','화면 멈춤',curTab,x.duration)})).observe({type:'longtask',buffered:true})}catch(_){}
 function uDevice(){const m=navigator.userAgent.match(/Android ([\d.]+);\s*([^;)]+)/);return m?`${m[2].split(' Build')[0].trim()} / Android ${m[1]}`:navigator.userAgent.slice(0,60)}
 function uInfo(){let i={};try{i=JSON.parse(HnmNative.info()||'{}')}catch(_){}return i}
-function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610131538',device:uDevice(),events,summaries}}
+function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610150249',device:uDevice(),events,summaries}}
 async function uPost(body,beacon){const j=JSON.stringify(body);
   if(beacon&&j.length<60000&&navigator.sendBeacon)return navigator.sendBeacon(TEL_URL,new Blob([j],{type:'text/plain;charset=utf-8'}));
   await fetch(TEL_URL,{method:'POST',mode:'no-cors',keepalive:j.length<60000,headers:{'Content-Type':'text/plain;charset=utf-8'},body:j});return true}
@@ -1895,7 +1911,7 @@ function initMemberAndTelemetry(){
   if(MEMBER){$('recSub').textContent='· 카페 자동 확인'}
   if(NATIVE_TRACK()){
     document.querySelectorAll('.app-only').forEach(e=>e.hidden=false);
-    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610131538'}`}catch(_){}
+    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610150249'}`}catch(_){}
     syncConsentUi();
     $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요');uTelInfo()};
     try{HnmNative.setConsent(consentOn())}catch(_){}
