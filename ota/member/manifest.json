@@ -1,7 +1,7 @@
 {
- "pageVersion": 2610150258,
- "sha256": "424a234b3b2db1072dbd03e6f5d18a0180c24f69d45d277c51a605125d67b445",
+ "pageVersion": 2610150305,
+ "sha256": "eff84634fb159a5b45693abb08b9490a9a9b9e7f97eaed4bed9057a097b6e804",
  "minVersionCode": 15,
- "notes": "경제스터디 진도율 자동 계산",
- "publishedAt": "2026-10-14T17:58:55.057384+00:00"
+ "notes": "진도율 계산 개선 · 총 페이지 한 번만 저장",
+ "publishedAt": "2026-10-14T18:05:50.450279+00:00"
 }
