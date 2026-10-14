@@ -463,6 +463,8 @@ nav.tabs{border-top-color:transparent;box-shadow:0 -1px 0 var(--line),0 -6px 16p
         <label class="f">스터디 회차<input type="text" id="ecRound" placeholder="예: 1회차"></label>
       </div>
       <label class="f">학습 교재<input type="text" id="ecBook" placeholder="예: 황정빈의 경제학 700제"></label>
+      <label class="f">교재 총 페이지<input type="text" id="ecPages" inputmode="numeric" placeholder="예: 420"></label>
+      <p class="note" id="ecPagesNote">이 책의 총 페이지 수를 적어 주세요. 문제 풀이량에 페이지를 적으면 진도율이 자동으로 계산돼요.</p>
       <div class="row3">
         <label class="f">일시<input type="text" id="ecDate" data-cal="dot" readonly></label>
         <label class="f">시작<input type="time" id="ecStart" value="18:00"></label>
@@ -470,7 +472,7 @@ nav.tabs{border-top-color:transparent;box-shadow:0 -1px 0 var(--line),0 -6px 16p
       </div>
       <p class="note" id="ecDateNote"></p>
       <div class="row">
-        <label class="f">문제 풀이량<input type="text" id="ecRange" placeholder="예: 1p ~ 30p"></label>
+        <label class="f">문제 풀이량<input type="text" id="ecRange" placeholder="예: 31p ~ 60p"></label>
         <label class="f">진도율(%)<input type="text" id="ecProg" inputmode="decimal" placeholder="예: 10%"></label>
       </div>
       <label class="f">장소<input type="text" id="ecPlace" placeholder="예: 동아리전용관 동아리방"></label>
@@ -1057,7 +1059,7 @@ function myEconPosts(){return((SYNC&&SYNC.myStudy)||[]).filter(p=>/^E\d/.test(p.
 function econPostFor(date){const d0=String(date).slice(0,10);const lim=ymd(at(parseYmd(d0),10,0,0));return myEconPosts().filter(p=>p.writtenAt.slice(0,10)>=d0&&p.writtenAt.slice(0,10)<=lim).sort((a,b)=>a.writtenAt.localeCompare(b.writtenAt))[0]||null}
 function speechPostFor(date){const d0=String(date).slice(0,10);const lim=ymd(at(parseYmd(d0),7,0,0));return((SYNC&&SYNC.myStudy)||[]).filter(p=>/^S\d+$/.test(p.boardName||'')&&p.writtenAt.slice(0,10)>=d0&&p.writtenAt.slice(0,10)<=lim)[0]||null}
 function econRound(date){const k=String(date).slice(0,7);return S.logs.filter(l=>l.kind==='econ'&&l.state==='done'&&l.date.startsWith(k)&&l.date<=date).length||1}
-const EC_F={ecKind:'kind',ecRound:'round',ecBook:'book',ecDate:'date',ecStart:'start',ecEnd:'end',ecRange:'range',ecProg:'prog',ecPlace:'place',ecName:'name',ecCore:'core',ecWrong:'wrong'};
+const EC_F={ecKind:'kind',ecRound:'round',ecBook:'book',ecPages:'pages',ecDate:'date',ecStart:'start',ecEnd:'end',ecRange:'range',ecProg:'prog',ecPlace:'place',ecName:'name',ecCore:'core',ecWrong:'wrong'};
 function ecDefaults(){S.ec=S.ec||{};const E=S.ec,T=econTeam();
   const def={kind:T.kind,book:'황정빈의 경제학 700제',place:'동아리전용관 동아리방',start:'18:00',end:'19:00',name:me().name,date:dot(new Date()),round:`${econRound(ymd(new Date()))}회차`};
   Object.keys(def).forEach(k=>{if(!E[k])E[k]=def[k]})}
@@ -1073,6 +1075,7 @@ function ecExec(){const v=ecV();const d=parseYmd(v.date)||new Date();const post=
 function ecText(){const v=ecV();
   return `스터디 구분: ${v.kind||''}\n스터디 회차: ${v.round||''}\n학습 교재: ${v.book||''}\n일시: ${v.date||''} (${v.start||''} - ${v.end||''})\n문제 풀이량: ${v.range||''}${v.prog?` (진도율 ${v.prog})`:''}\n장소: ${v.place||''}\n이름: ${v.name||''}\n\n[오늘의 핵심 개념]\n${v.core||''}\n\n[오답 분석 및 취약점]\n${v.wrong||''}`}
 function renderEc(){
+  try{ecPagesNote()}catch(_){}
   const L=ecSyncDate();if(document.activeElement!==$('ecDate'))$('ecDate').value=S.ec.date||'';if(document.activeElement!==$('ecRound'))$('ecRound').value=S.ec.round||'';
   dateNote('ecDateNote',S.ec.dateSrc,L,()=>{S.ec.dateAt=0;save();renderEc();toast('스터디 기록 날짜로 맞췄어요')});
   $('ecTitle').textContent=ecTitle();$('ecExec').textContent=ecExec();
@@ -1080,7 +1083,21 @@ function renderEc(){
   const d=parseYmd((S.ec||{}).date||'');const post=d&&econPostFor(ymd(d));const m=$('ecMine');m.hidden=!post;
   if(post){m.href=artUrl('study',post.articleId)+focusHash({mode:'comment'});m.dataset.focus=JSON.stringify({mode:'comment',club:CLUB.study,articleId:post.articleId,text:ecExec()});m.textContent=post.my&&post.my.at?'내 글 열기 (시행 댓글 확인됨) ↗':'내 글에 시행 댓글 달기 ↗'}
 }
-Object.entries(EC_F).forEach(([id,k])=>$(id).addEventListener('input',()=>{S.ec=S.ec||{};S.ec[k]=$(id).value;if(k==='date'){S.ec.dateAt=Date.now();S.ec.dateSrc='manual'}save();renderEc()}));
+// 진도율 자동 계산: 문제 풀이량의 마지막 페이지 ÷ 교재 총 페이지 (교재별 총 페이지는 기억해 둠)
+const ecTotal=()=>{const n=parseInt(String((S.ec||{}).pages||'').replace(/\D/g,''),10);return n>0?n:0};
+const ecEndPage=r=>{const ns=(String(r||'').match(/\d+/g)||[]).map(Number).filter(n=>n>0);return ns.length?Math.max(...ns):0};
+function ecAutoProg(){const E=S.ec||{},tot=ecTotal(),end=ecEndPage(E.range);if(!tot||!end)return false;
+  const p=Math.min(100,Math.round(end/tot*1000)/10);E.prog=`${p}%`;if(document.activeElement!==$('ecProg'))$('ecProg').value=E.prog;return true}
+function ecPagesNote(){const el=$('ecPagesNote');if(!el)return;const E=S.ec||{},tot=ecTotal(),end=ecEndPage(E.range);
+  el.textContent=!tot?'이 책의 총 페이지 수를 적어 주세요. 문제 풀이량에 페이지를 적으면 진도율이 자동으로 계산돼요.'
+    :end?(()=>{const auto=`${Math.min(100,Math.round(end/tot*1000)/10)}%`;return `진도율 자동 계산: ${end}p ÷ 총 ${tot}p = ${auto}`+(E.prog&&E.prog.replace(/\s/g,'')!==auto?` · 지금은 직접 적은 ${E.prog}로 들어가요`:' (직접 고쳐도 돼요)')})():`총 ${tot}p 기준으로 진도율을 계산해요. 문제 풀이량에 '31p ~ 60p'처럼 페이지를 적어 주세요.`;
+  $('ecPages').closest('label').style.outline=tot?'':'2px solid var(--kraft)';$('ecPages').closest('label').style.borderRadius='10px'}
+Object.entries(EC_F).forEach(([id,k])=>$(id).addEventListener('input',()=>{S.ec=S.ec||{};S.ec[k]=$(id).value;if(k==='date'){S.ec.dateAt=Date.now();S.ec.dateSrc='manual'}
+  S.ecBooks=S.ecBooks||{};const bk=String(S.ec.book||'').trim();
+  if(k==='book'&&bk&&S.ecBooks[bk]){S.ec.pages=String(S.ecBooks[bk]);$('ecPages').value=S.ec.pages}
+  if(k==='pages'&&bk&&ecTotal())S.ecBooks[bk]=ecTotal();
+  if(k==='range'||k==='pages'||k==='book')ecAutoProg();
+  save();renderEc()}));
 $('ecTitleCopy').onclick=()=>copy(ecTitle(),'제목을 복사했어요');
 $('ecExecCopy').onclick=()=>copy(ecExec(),'시행 댓글을 복사했어요. 내 글 댓글에 붙여넣으세요');
 const ecPh=[null,null];
@@ -1815,7 +1832,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('button,a,[role=
 try{new PerformanceObserver(l=>l.getEntries().forEach(x=>{if(x.duration>800)uLog('timing','화면 멈춤',curTab,x.duration)})).observe({type:'longtask',buffered:true})}catch(_){}
 function uDevice(){const m=navigator.userAgent.match(/Android ([\d.]+);\s*([^;)]+)/);return m?`${m[2].split(' Build')[0].trim()} / Android ${m[1]}`:navigator.userAgent.slice(0,60)}
 function uInfo(){let i={};try{i=JSON.parse(HnmNative.info()||'{}')}catch(_){}return i}
-function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610150249',device:uDevice(),events,summaries}}
+function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2610150258',device:uDevice(),events,summaries}}
 async function uPost(body,beacon){const j=JSON.stringify(body);
   if(beacon&&j.length<60000&&navigator.sendBeacon)return navigator.sendBeacon(TEL_URL,new Blob([j],{type:'text/plain;charset=utf-8'}));
   await fetch(TEL_URL,{method:'POST',mode:'no-cors',keepalive:j.length<60000,headers:{'Content-Type':'text/plain;charset=utf-8'},body:j});return true}
@@ -1911,7 +1928,7 @@ function initMemberAndTelemetry(){
   if(MEMBER){$('recSub').textContent='· 카페 자동 확인'}
   if(NATIVE_TRACK()){
     document.querySelectorAll('.app-only').forEach(e=>e.hidden=false);
-    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610150249'}`}catch(_){}
+    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2610150258'}`}catch(_){}
     syncConsentUi();
     $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요');uTelInfo()};
     try{HnmNative.setConsent(consentOn())}catch(_){}
