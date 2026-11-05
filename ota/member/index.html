@@ -209,7 +209,7 @@ input[data-cal]{cursor:pointer;padding-right:34px}
 .cal-g button:hover{background:var(--bg)}
 .cal-g button[aria-selected="true"]:hover{background:var(--board)}
 .cal-q{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
-.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;z-index:40;max-width:calc(100% - 32px)}
 .banner{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:600}
 .banner.upd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .foot{font-size:11.5px;color:var(--muted);margin-top:22px;text-align:center}
@@ -430,6 +430,16 @@ html.ios .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
 html.ios .stat{min-width:0;padding:8px}
 html.ios .stat b{font-size:24px}html.ios .stat b.long{font-size:clamp(15px,4.4vw,21px)}
 html.ios .pp-r{grid-template-columns:48px minmax(0,1fr) auto auto}
+/* 아이패드 (아이폰 앱이 아이패드 앱으로 뜰 때, 폭 768px 이상 — 아이폰은 세로 고정이라 해당 없음, 갤럭시탭은 html.ios가 없어 그대로):
+   넓은 칸 + 할 일·비정기 활동·카페 소식은 2단, 쓰는 화면(작성·나)은 가운데 760px */
+@media (min-width:768px){
+html.ios .app{max-width:1040px;padding-inline:24px}
+html.ios .board{margin-inline:-24px}
+html.ios #weekList,html.ios #extraList,html.ios #eventSugg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+html.ios #feedList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;align-items:start}
+html.ios #feedList .feed-day{grid-column:1/-1}html.ios #feedList .fitem+.fitem{margin-top:0}
+html.ios #view-write,html.ios #view-rec{max-width:760px;margin-inline:auto}
+}
 </style>
 
 <div class="app">
@@ -1858,8 +1868,10 @@ function leaderPanel(it,key,now){
 /* ---------- 스피치 조장 벌금보고서 (회준님 26.11.04): 조원이 S조 게시판에 올린 개인 평가양식(그림)의 '발표 시간'·'금액' → 조원별 금액·합계 ----------
    기한은 그 달 편성 공지의 '벌금 보고서 업로드 ○월 ○일까지'. 보고 글 "11월 S2 스피치 스터디 벌금 업로드" / 본문 "이름 500" 줄은 운영실 engine/studyFine.js(reportOf·amountsOf)와 같은 형식 */
 const SPF_KEY='hnm-spform';let _spfBusy=false;const _spfTried=new Set(); // 이번 실행에서 읽기를 시도한 글 (실패해도 화면을 다시 그릴 때마다 또 읽지 않게)
-function spPostsFor(team){const T=((SYNC&&SYNC.team)||[]).find(t=>t.kind==='speech'&&String(t.team)===String(team));const seen=new Set();
-  return (T?T.posts:[]).concat(((SYNC&&SYNC.speechPosts)||[]).filter(p=>String(p.boardName)===String(team))).filter(p=>!seen.has(+p.articleId)&&seen.add(+p.articleId))}
+// 조장 벌금 보고 글은 26.09부터 스터디카페 '스피치 스터디' 게시판(SP_REP_BOARD)에 모임 → 그 게시판 글은 제목의 조(S5 등)로 가름
+const SP_REP_BOARD=121,SP_REP_NAME='스피치 스터디';
+function spPostsFor(team){const T=((SYNC&&SYNC.team)||[]).find(t=>t.kind==='speech'&&String(t.team)===String(team));const seen=new Set(),G=String(team).toUpperCase();
+  return (T?T.posts:[]).concat(((SYNC&&SYNC.speechPosts)||[]).filter(p=>String(p.boardName)===String(team)||(!/^S\d+$/.test(p.boardName||'')&&(spReportOf(p.title,p.writtenAt)||{}).group===G))).filter(p=>!seen.has(+p.articleId)&&seen.add(+p.articleId))}
 // "10월 S5 스피치 스터디 벌금 업로드"(운영실 reportOf와 같음) + 실제로 있는 "S2 9월 …"·"4월 s8 …"·달 없는 "S2 스피치 스터디 벌금업로드"(20일 전에 올리면 지난달)
 function spReportOf(title,writtenAt){const t=String(title||'');if(!/스피치.*벌금/.test(t))return null;const g=t.match(/S\s*(\d{1,2})(?!\d)/i);if(!g)return null;
   const mm=t.match(/(\d{1,2})\s*월/),wy=+String(writtenAt).slice(0,4),wm=+String(writtenAt).slice(5,7),wd=+String(writtenAt).slice(8,10);let y=wy,mon;
@@ -1900,31 +1912,29 @@ function spReport(R,sp,key){const M=spfGet(),due=R.reportBy?at(parseYmd(R.report
   const rep=all.filter(p=>{const r=spReportOf(p.title,p.writtenAt);return r&&r.ym===key&&r.group===String(sp.team).toUpperCase()&&nameOfNick(p.author)===nameOfNick(me().name)}).sort((a,b)=>String(b.writtenAt).localeCompare(String(a.writtenAt)))[0]||null;
   return{rows,known,k,logs,need:rows.filter(r=>r.how==='none').length,total:rows.reduce((s,r)=>s+(r.amt||0),0),posts,rep,due,unread:posts.filter(p=>!M[p.articleId]).length,title:`${+key.slice(5)}월 ${sp.team} 스피치 스터디 벌금 업로드`}}
 // 보고 본문: "이름 금액 (내역)" 줄 — 운영실 amountsOf가 이름 뒤 첫 숫자를 금액으로 읽음
-function spReportText(o){return o.rows.map(r=>`${r.name} ${r.amt==null?'?':r.amt}${r.parts.length?` (${r.parts.join(', ')})`:''}`).join('\n')+`\n\n합계 ${o.total.toLocaleString('ko-KR')}원`}
+// 합계 줄은 쓰지 않음 (회준님 26.11.05) — 합계는 집계표 화면에만
+function spReportText(o){return o.rows.map(r=>`${r.name} ${r.amt==null?'?':r.amt}${r.parts.length?` (${r.parts.join(', ')})`:''}`).join('\n')}
 // 조원 평가표 그림을 앱 그림 글자 읽기로 한 번씩 읽어 저장 (글번호별). 조장 기기에서만, 할 일이 보이거나 집계표를 열 때
 async function spScan(R,sp,key,force){if(_spfBusy||!window.HnmNative||!hasCap('aiSlides'))return false;const M=spfGet(),todo=spReport(R,sp,key).posts.filter(p=>force||(!M[p.articleId]&&!_spfTried.has(+p.articleId)));if(!todo.length)return false;todo.forEach(p=>_spfTried.add(+p.articleId));
   _spfBusy=true;try{for(const p of todo){const pages=[];
       try{const d=await aiNative('hnm-aislides',id=>HnmNative.aiSlides(id,String(p.articleId)),d=>{if(d.ev==='page'){pages.push(String(d.text||''));return false}return d.ev==='done'},90000);
         if(d&&d.ok){const m=spfGet();m[p.articleId]={...spFormRead(pages.join(' ')),at:Date.now()};const ks=Object.keys(m).sort((a,b)=>m[b].at-m[a].at).slice(0,80);try{localStorage.setItem(SPF_KEY,JSON.stringify(Object.fromEntries(ks.map(k=>[k,m[k]]))))}catch(_){}}}catch(_){}}}
   finally{_spfBusy=false}if(!isTyping())renderAll();return true}
-function spReportImage(o,sp,key){const rows=o.rows,W=760,rh=52,H=150+(rows.length+1)*rh+70,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
-  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#111';x.textBaseline='middle';x.font=`700 30px ${FONT}`;x.textAlign='center';x.fillText(`${+key.slice(5)}월 ${sp.team} 스피치 스터디 벌금`,W/2,60);
-  const X=[40,200,560,720],head=['이름','내역','금액'];let y=110;x.strokeStyle='#999';x.lineWidth=1.4;
-  const row=(cells,bold,bg)=>{if(bg){x.fillStyle=bg;x.fillRect(X[0],y,X[3]-X[0],rh)}x.fillStyle='#111';cells.forEach((t,i)=>{x.strokeRect(X[i],y,X[i+1]-X[i],rh);x.font=`${bold?700:500} 24px ${FONT}`;x.textAlign='center';x.fillText(t,(X[i]+X[i+1])/2,y+rh/2)});y+=rh};
-  row(head,true,'#D6DCE4');rows.forEach(r=>row([r.name,r.parts.join(', ')||(r.how==='time'?`${r.times.map(spFmt).join('·')} 범위 안`:'없음'),r.amt==null?'확인 필요':r.amt.toLocaleString('ko-KR')+'원'],false));
-  x.font=`700 26px ${FONT}`;x.textAlign='right';x.fillText(`합계 ${o.total.toLocaleString('ko-KR')}원`,X[3],y+40);return c}
-function openSpReport(R,sp,key){const o=spReport(R,sp,key),can=window.HnmNative&&hasCap('aiSlides');lastImg.spr={canvas:spReportImage(o,sp,key),name:`${+key.slice(5)}월_${sp.team}_스피치_벌금.png`};
+function openSpReport(R,sp,key){const o=spReport(R,sp,key),can=window.HnmNative&&hasCap('aiSlides');
   const due=`${o.due.getMonth()+1}월 ${o.due.getDate()}일`;
-  openSheet(`스피치 벌금 보고서 (${sp.team}조)`,`<p class="note">${o.rep?`<b>올림 ✓</b> ${esc(o.rep.title)} (${shortAt(o.rep.writtenAt)})`:`${due}까지 ${esc(sp.team)} 게시판에 올려요 (조장 미업로드 2,000원).`} 조장 포함 조원마다 발표 시간 2:15~2:45 벗어남 500원 · 평가표 미업로드 2,000원 · 기한 초과(시행 다음날 자정 뒤) 1,000원이에요. 적힌 금액과 다르면 '확인'으로 보여요.${o.logs.length?'':` <b>'이번 달 › 스터디 기록'에 스피치 시행일을 넣으면 기한 초과도 따져요</b> (지금은 ${o.k}회보다 모자란 평가표만 미업로드로 셈).`}${o.known?'':' 조 게시판 글을 아직 받지 못했어요 — 이번 주 탭의 지금 동기화를 눌러 주세요.'}</p>
+  openSheet(`스피치 벌금 보고서 (${sp.team}조)`,`<p class="note">${o.rep?`<b>올림 ✓</b> ${esc(o.rep.title)} (${shortAt(o.rep.writtenAt)})`:`${due}까지 스터디카페 '${SP_REP_NAME}' 게시판에 올려요 (조장 미업로드 2,000원).`} '카페 글쓰기 열기'를 누르면 앱이 게시판·말머리·제목·본문을 채워요 — 내용을 확인하고 '등록'만 누르세요. 조장 포함 조원마다 발표 시간 2:15~2:45 벗어남 500원 · 평가표 미업로드 2,000원 · 기한 초과(시행 다음날 자정 뒤) 1,000원이에요. 적힌 금액과 다르면 '확인'으로 보여요.${o.logs.length?'':` <b>'이번 달 › 스터디 기록'에 스피치 시행일을 넣으면 기한 초과도 따져요</b> (지금은 ${o.k}회보다 모자란 평가표만 미업로드로 셈).`}${o.known?'':' 조 게시판 글을 아직 받지 못했어요 — 이번 주 탭의 지금 동기화를 눌러 주세요.'}</p>
     <div class="tbl"><table><thead><tr><th>조원</th><th>평가표 · 발표 시간</th><th style="text-align:right">금액</th></tr></thead><tbody>${o.rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${!o.known?'<span class="pill p-idle">조 게시판 글 받는 중</span>':`${r.posts}/${o.k}회 `+(r.how==='time'?r.times.map(t=>`${esc(spFmt(t))} <span class="pill ${spFineSec(t)?'p-warn">벗어남 500원':'p-ok">범위 안'}</span>`).join(' '):r.how==='written'?`<span class="pill p-acc">시간 못 읽음 · 적힌 금액 ${r.written}원</span>`:r.how==='none'?`<span class="pill p-danger">확인 필요</span> <a href="${esc(artUrl('study',r.last.articleId))}" target="_blank" rel="noopener">평가표 직접 보기 ↗</a>`:r.how==='reading'?'<span class="pill p-idle">읽는 중</span>':'')}${r.miss?` <span class="pill p-danger">미업로드 ${r.miss}회</span>`:''}${r.late?` <span class="pill p-warn">기한 초과 ${r.late}회</span>`:''}${r.check?` <span class="pill p-warn">적힌 금액 ${r.written}원 · 확인</span>`:''}</td><td class="n">${r.amt==null?'?':r.amt.toLocaleString('ko-KR')+'원'}</td></tr>`).join('')}</tbody></table></div>
     <p style="margin:8px 2px"><b>합계 ${o.total.toLocaleString('ko-KR')}원</b>${o.need?` <span class="pill p-danger">확인 필요 ${o.need}명 — 평가표를 보고 금액을 직접 적어 주세요</span>`:''}${o.unread&&can?` <span class="note">· 평가표 ${o.unread}개를 읽는 중이에요</span>`:''}${!can?' <span class="note">· 앱에서 열면 평가표 그림을 읽어 채워요</span>':''}</p>
     <dl class="kv"><dt>제목</dt><dd><span>${esc(o.title)}</span> <button class="btn sm" id="sprTitle">복사</button></dd></dl>
     <pre class="out">${esc(spReportText(o))}</pre>
-    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn primary" id="sprCopy">집계표 복사</button><button class="btn" id="sprImg">이미지 저장</button><button class="btn acc" id="sprWrite">카페 글쓰기 열기 ↗</button>${can?'<button class="btn" id="sprScan">평가표 다시 읽기</button>':''}</div>`);
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn acc" id="sprWrite">카페 글쓰기 열기 ↗</button><button class="btn" id="sprCopy">집계표 복사</button>${can?'<button class="btn" id="sprScan">평가표 다시 읽기</button>':''}</div>`);
   $('sprTitle').onclick=()=>copy(o.title,'제목을 복사했어요');$('sprCopy').onclick=()=>copy(spReportText(o),'집계표를 복사했어요. 글쓰기 본문에 붙여넣으세요');
-  $('sprImg').onclick=e=>saveImg('spr',e.currentTarget);
-  $('sprWrite').onclick=()=>{copy(spReportText(o),'집계표를 복사했어요. 본문에 붙여넣고 제목을 적어 올리세요');const u=`https://m.cafe.naver.com/ca-fe/web/cafes/${CLUB.study}/articles/write?boardType=L&menuId=${SBOARD[sp.team]||29}`;
-    if(window.HnmNative&&typeof HnmNative.openCafe==='function'){try{HnmNative.openCafe(u,'{}');track('sp_report_write',String(sp.team));return}catch(_){}}window.open(u,'_blank')};
+  // 카페 글쓰기: 앱이 '스피치 스터디' 게시판·말머리·제목·본문을 채우고 등록은 회원이 (앱 안 cafe/focus.js의 write 모드, 화면은 글자 데이터만 넘김)
+  // 말머리는 상자가 있을 때만 heads 순서대로 같은 이름을 고름 (26.10 보고 글은 말머리 없음, S조 게시판 평가표는 '스피치 스터디')
+  $('sprWrite').onclick=()=>{const body=spReportText(o),u=`https://m.cafe.naver.com/ca-fe/web/cafes/${CLUB.study}/articles/write?boardType=L&menuId=${SP_REP_BOARD}`;
+    copy(body,'본문을 복사해 뒀어요. 채우지 못하면 본문 칸에 붙여넣기만 하세요');
+    if(window.HnmNative&&typeof HnmNative.openCafe==='function'){try{HnmNative.openCafe(u,JSON.stringify({mode:'write',board:SP_REP_NAME,heads:['벌금','벌금 보고','벌금 업로드',SP_REP_NAME,String(sp.team)],title:o.title,body}));track('sp_report_write',String(sp.team));return}catch(_){}}
+    window.open(u,'_blank')};
   if($('sprScan'))$('sprScan').onclick=async e=>{e.currentTarget.disabled=true;e.currentTarget.textContent='읽는 중…';await spScan(R,sp,key,true);closeSheet();openSpReport(R,sp,key)};
   if(can&&o.unread)spScan(R,sp,key).then(ch=>{if(ch&&$('sprCopy'))openSpReport(R,sp,key)})}
 function renderMonth(){
@@ -2552,7 +2562,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('button,a,[role=
 try{new PerformanceObserver(l=>l.getEntries().forEach(x=>{if(x.duration>800)uLog('timing','화면 멈춤',curTab,x.duration)})).observe({type:'longtask',buffered:true})}catch(_){}
 function uDevice(){const m=navigator.userAgent.match(/Android ([\d.]+);\s*([^;)]+)/);return m?`${m[2].split(' Build')[0].trim()} / Android ${m[1]}`:navigator.userAgent.slice(0,60)}
 function uInfo(){let i={};try{i=JSON.parse(HnmNative.info()||'{}')}catch(_){}return i}
-function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2611051435',device:uDevice(),events,summaries}}
+function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2611051653',device:uDevice(),events,summaries}}
 async function uPost(body,beacon){const j=JSON.stringify(body);
   if(beacon&&j.length<60000&&navigator.sendBeacon)return navigator.sendBeacon(TEL_URL,new Blob([j],{type:'text/plain;charset=utf-8'}));
   await fetch(TEL_URL,{method:'POST',mode:'no-cors',keepalive:j.length<60000,headers:{'Content-Type':'text/plain;charset=utf-8'},body:j});return true}
@@ -2691,7 +2701,7 @@ function initMemberAndTelemetry(){
   if(MEMBER){$('recSub').textContent='· 카페 자동 확인'}
   if(NATIVE_TRACK()){
     document.querySelectorAll('.app-only').forEach(e=>e.hidden=false);
-    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2611051435'}`}catch(_){}
+    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2611051653'}`}catch(_){}
     syncConsentUi();
     $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};if(!S.consent)try{localStorage.removeItem('hnm-usage')}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요');uTelInfo()};
     try{HnmNative.setConsent(consentOn())}catch(_){}
@@ -2852,8 +2862,17 @@ function aiExamples(text,title){const out=[],used=new Set();AI_TEAMS.forEach(t=>
   pickExamples(text,20-out.length,used,null,title).forEach(it=>out.push(it));return out}
 
 // ---- 발표 PDF → 글자 (pdf.js, 휴대폰 안에서) ----
-function loadPdfJs(){return new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-  s.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';res(window.pdfjsLib)};s.onerror=()=>rej(new Error('pdfjs'));document.head.appendChild(s)})}
+// pdf.js 3.11.174: 앱 안 파일 먼저 (회원 화면 CSP는 script-src 'self'라 외부 CDN이 막힘). 안드로이드는 같은 출처 worker,
+// 아이폰(hnm-app:)은 사용자 정의 주소에서 Worker를 못 띄울 수 있어 worker 스크립트를 화면에 올려 pdf.js 가짜 worker(window.pdfjsWorker)로 읽는다
+function loadPdfJs(){return new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);
+  const AND=location.host==='appassets.androidplatform.net',IOS=location.protocol==='hnm-app:',CDN='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  const srcs=[...(AND?[['/assets/lib/','w']]:[]),...(IOS?[['/lib/','fake']]:[]),[CDN,'w']];
+  const add=src=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{s.remove();no()};document.head.appendChild(s)});
+  const next=async i=>{if(i>=srcs.length)return rej(new Error('pdfjs'));const [base,mode]=srcs[i];
+    try{await add(base+'pdf.min.js');if(!window.pdfjsLib)throw 0;
+      if(mode==='fake'){await add(base+'pdf.worker.min.js');if(!window.pdfjsWorker)throw 0}else window.pdfjsLib.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.js';
+      res(window.pdfjsLib)}catch(_){try{delete window.pdfjsLib}catch(e){}next(i+1)}};
+  next(0)})}
 // 글자가 거의 없는 쪽(그림으로 된 슬라이드)은 앱이면 쪽을 이미지로 그려 휴대폰 글자 인식(ML Kit)으로 읽는다 → '(그림에서 읽은 글자)' 표시
 const _ocrWait=new Map();
 window.addEventListener('message',e=>{const d=e.data;if(e.source===window&&d&&d.type==='hnm-ocr'&&_ocrWait.has(d.id)){_ocrWait.get(d.id)(d.text||'');_ocrWait.delete(d.id)}});
@@ -2946,7 +2965,7 @@ $('aiStart').onclick=async e=>{const b=e.currentTarget;const title=$('aiTitle').
       ...(v2?{engine:'v2',depth,images:AI.imgs||[]}:{})});
     AI.demo=null;aiBegin(r,title)}
   catch(err){toast(err.message)}finally{b.disabled=false;b.textContent='면접 시작'}};
-// ---- 체험 모드 (0.9.25, API 안 씀): AI 버블론(39기 나상건, 카페 글 13353) 모범 질문 중 팀마다 1개로 고정.
+// ---- 체험 모드 (0.9.25, API 안 씀): AI 버블론(카페 글 13353) 모범 질문 중 팀마다 1개로 고정.
 // 꼬리질문은 체험용 규칙(답이 60자보다 짧으면, 한 질문에 최대 2개) — 실제 면접은 AI가 답 내용을 보고 정함. 평가는 고정 안내 + 대비할 질문
 const AI_DEMO={title:'AI 버블론 (체험)',qs:[
   {team:'증권',q:'14페이지 주가와 실적 증가율 그래프를 낙관론의 근거로 소개해주셨는데, 알파벳은 주가가 66.3% 오른 반면 매출과 영업이익은 각각 15.1%, 14.8% 늘었고, 마이크로소프트는 실적이 늘었는데도 주가가 23.8% 떨어졌습니다. 이 그래프는 오히려 주가가 실적과 따로 움직인다는 근거로도 읽힐 수 있을 것 같은데, 발표자님은 어떻게 해석하십니까?',
@@ -3211,7 +3230,7 @@ $('linkMode').value=S.linkMode||'auto';$('linkMode').onchange=()=>{S.linkMode=$(
 /* ---------- 기록 백업·불러오기 (폰을 바꿀 때) ---------- */
 const b64utf8=s=>{const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin)};
 $('bkExport').onclick=async e=>{const btn=e.currentTarget;
-  const json=JSON.stringify({app:'hwangna-mate',kind:'backup',v:1,at:new Date().toISOString(),page:'2611051435',state:S});
+  const json=JSON.stringify({app:'hwangna-mate',kind:'backup',v:1,at:new Date().toISOString(),page:'2611051653',state:S});
   const name=`황나메이트_백업_${ymd(new Date()).replace(/-/g,'')}.json`;track('backup_export','');
   if(hasCap('saveFile')){const r=String(HnmNative.saveFile(name,b64utf8(json),'application/json'));toast(r.startsWith('ok')?''+WHERE_FILES+'/hwangna-mate 폴더에 백업을 저장했어요':'백업을 저장하지 못했어요');return}
   let dl=DL;if(!dl){try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(_){}}

@@ -1,9 +1,9 @@
 {
- "versionCode": 49,
- "versionName": "0.9.35",
- "url": "https://github.com/hj5952009/hwangna-mate-ota/releases/download/apk-49/hwangna-mate-49.apk",
+ "versionCode": 48,
+ "versionName": "0.9.34",
+ "url": "https://github.com/hj5952009/hwangna-mate-ota/releases/download/apk-48/hwangna-mate-48.apk",
  "sha256": "acc011a90ca1b07cdf60d19a98a9eeab94b0ed7f81e8d2d1220967b75d59553c",
  "size": 115909835,
- "notes": "예",
- "publishedAt": "2026-11-05T08:18:51.841511+00:00"
+ "notes": "황나 메이트 0.9.34",
+ "publishedAt": "2026-11-05T08:22:36.382139+00:00"
 }
