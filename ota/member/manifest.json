@@ -1,7 +1,7 @@
 {
- "pageVersion": 2611051653,
- "sha256": "1d796fbd7e859d3468f88a358a23a6818f2b4c37eb2e8369aae5c9c18b5fd8a0",
- "minVersionCode": 48,
- "notes": "황나 메이트 0.9.34",
- "publishedAt": "2026-11-05T08:24:05.268325+00:00"
+ "pageVersion": 2611051722,
+ "sha256": "d018a10746f205c47dcb4c4660f92937cc7531f1590b612f3db86d4ad58c3837",
+ "minVersionCode": 49,
+ "notes": "0.9.35: 자동 업데이트, 스피치 보고서 게시판·말머리 자동, PDF 넣기",
+ "publishedAt": "2026-11-05T09:08:52.530254+00:00"
 }

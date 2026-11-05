@@ -2562,7 +2562,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('button,a,[role=
 try{new PerformanceObserver(l=>l.getEntries().forEach(x=>{if(x.duration>800)uLog('timing','화면 멈춤',curTab,x.duration)})).observe({type:'longtask',buffered:true})}catch(_){}
 function uDevice(){const m=navigator.userAgent.match(/Android ([\d.]+);\s*([^;)]+)/);return m?`${m[2].split(' Build')[0].trim()} / Android ${m[1]}`:navigator.userAgent.slice(0,60)}
 function uInfo(){let i={};try{i=JSON.parse(HnmNative.info()||'{}')}catch(_){}return i}
-function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2611051653',device:uDevice(),events,summaries}}
+function uBody(events,summaries){const i=uInfo();return {key:TEL_KEY,v:2,install:U.id,nick:nickNow(),app:`${i.versionName||'-'}(${i.versionCode||''})-${i.flavor||''}`,page:'2611051722',device:uDevice(),events,summaries}}
 async function uPost(body,beacon){const j=JSON.stringify(body);
   if(beacon&&j.length<60000&&navigator.sendBeacon)return navigator.sendBeacon(TEL_URL,new Blob([j],{type:'text/plain;charset=utf-8'}));
   await fetch(TEL_URL,{method:'POST',mode:'no-cors',keepalive:j.length<60000,headers:{'Content-Type':'text/plain;charset=utf-8'},body:j});return true}
@@ -2701,7 +2701,7 @@ function initMemberAndTelemetry(){
   if(MEMBER){$('recSub').textContent='· 카페 자동 확인'}
   if(NATIVE_TRACK()){
     document.querySelectorAll('.app-only').forEach(e=>e.hidden=false);
-    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2611051653'}`}catch(_){}
+    try{const info=JSON.parse(HnmNative.info()||'{}');$('appVer').textContent=`앱 버전 ${info.versionName||'-'} (${info.flavor||'-'}) · 화면 ${'2611051722'}`}catch(_){}
     syncConsentUi();
     $('consentChk').onchange=()=>{S.consent=$('consentChk').checked;save();try{HnmNative.setConsent(S.consent)}catch(_){};if(!S.consent)try{localStorage.removeItem('hnm-usage')}catch(_){};toast(S.consent?'사용 기록을 보내요':'사용 기록을 보내지 않아요');uTelInfo()};
     try{HnmNative.setConsent(consentOn())}catch(_){}
@@ -2749,7 +2749,8 @@ window.addEventListener('message',e=>{const d=e.data;if(e.source!==window||!d||d
   $('updText').textContent=`새 기능이 도착했어요${d.notes?` · ${d.notes}`:''}`;$('updGo').textContent='적용';$('updBanner').hidden=false;
   $('updGo').onclick=()=>{track('ota_reload',String(d.pageVersion||''));location.reload()}});
 window.addEventListener('message',e=>{const d=e.data;if(e.source!==window||!d||d.type!=='hnm-update')return;
-  $('updText').textContent=`새 버전 ${d.versionName||''}이 나왔어요${d.notes?` · ${d.notes}`:''}`;$('updGo').textContent='받기';$('updBanner').hidden=false;
+  // ready = 앱이 와이파이에서 미리 받아 확인까지 마친 상태 (0.9.35~) → 누르면 바로 설치 확인 창
+  $('updText').textContent=d.ready?`새 버전 ${d.versionName||''} 준비됨 — 눌러서 설치${d.notes?` · ${d.notes}`:''}`:`새 버전 ${d.versionName||''}이 나왔어요${d.notes?` · ${d.notes}`:''}`;$('updGo').textContent=d.ready?'설치':'받기';$('updBanner').hidden=false;
   $('updGo').onclick=()=>{track('update_click',d.versionName);if(d.apk&&hasCap('apkUpdate')){apkOffer(d);return}if(window.HnmNative)HnmNative.openUrl(d.url);else window.open(d.url,'_blank')}
   // 앱 업데이트가 있으면 '새 버전' 창을 바로 띄움 (같은 버전은 하루 한 번까지 · 로그인 화면 위에는 띄우지 않음)
   if(d.apk&&hasCap('apkUpdate')){const key=`${d.versionCode}@${ymd(new Date())}`;
@@ -3210,8 +3211,8 @@ async function apkCheck(btn){btn.disabled=true;btn.textContent='확인 중…';
   apkOffer(r.update)}
 function apkOffer(u){
   openSheet('업데이트가 필요해요',`<p class="note">황나 메이트 <b>${esc(u.versionName||'')}</b>이 나왔어요${u.notes?` · ${esc(u.notes)}`:''}.</p>
-    <p class="note">받은 뒤 안드로이드 설치 화면에서 '업데이트'를 누르면 끝나요. 처음 한 번은 '이 출처 허용'을 켜야 해요. 내 기록과 로그인은 그대로 남아요.</p>
-    <div class="row" style="gap:8px"><button class="btn primary" id="apkGo">받아서 설치</button><button class="btn" id="apkNo">나중에</button></div>`);
+    <p class="note">${u.ready?'이미 받아서 확인까지 마쳤어요. ':''}안드로이드 설치 화면에서 '업데이트'를 누르면 끝나요. 처음 한 번은 '이 출처 허용'을 켜야 해요. 내 기록과 로그인은 그대로 남아요.${u.ready?'':' 앞으로는 와이파이에서 미리 받아 두고 알려 드려요.'}</p>
+    <div class="row" style="gap:8px"><button class="btn primary" id="apkGo">${u.ready?'설치':'받아서 설치'}</button><button class="btn" id="apkNo">나중에</button></div>`);
   $('apkNo').onclick=closeSheet;$('apkGo').onclick=e=>apkInstall(e.currentTarget)}
 async function apkInstall(btn){btn.disabled=true;const t0=btn.textContent;btn.textContent='받는 중…';
   const r=await bridgeCall('hnm-apkinstall-request','hnm-apkinstall',{articleId:4},{ms:300000,onProgress:t=>{btn.textContent=`${t}…`}});
@@ -3230,7 +3231,7 @@ $('linkMode').value=S.linkMode||'auto';$('linkMode').onchange=()=>{S.linkMode=$(
 /* ---------- 기록 백업·불러오기 (폰을 바꿀 때) ---------- */
 const b64utf8=s=>{const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin)};
 $('bkExport').onclick=async e=>{const btn=e.currentTarget;
-  const json=JSON.stringify({app:'hwangna-mate',kind:'backup',v:1,at:new Date().toISOString(),page:'2611051653',state:S});
+  const json=JSON.stringify({app:'hwangna-mate',kind:'backup',v:1,at:new Date().toISOString(),page:'2611051722',state:S});
   const name=`황나메이트_백업_${ymd(new Date()).replace(/-/g,'')}.json`;track('backup_export','');
   if(hasCap('saveFile')){const r=String(HnmNative.saveFile(name,b64utf8(json),'application/json'));toast(r.startsWith('ok')?''+WHERE_FILES+'/hwangna-mate 폴더에 백업을 저장했어요':'백업을 저장하지 못했어요');return}
   let dl=DL;if(!dl){try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(_){}}
